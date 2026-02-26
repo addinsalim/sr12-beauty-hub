@@ -1,0 +1,50 @@
+import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
+import { mockProducts } from '@/lib/mockData';
+import ProductCard from './ProductCard';
+
+const FeaturedProducts = () => {
+  const { t } = useI18n();
+  const featured = mockProducts.slice(0, 4);
+
+  return (
+    <section className="bg-secondary/30 py-16 md:py-24">
+      <div className="container mx-auto px-4">
+        <div className="mb-10 flex items-end justify-between">
+          <div>
+            <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl">
+              {t.products.title}
+            </h2>
+            <p className="mt-2 text-muted-foreground">{t.products.subtitle}</p>
+          </div>
+          <Link
+            to="/products"
+            className="hidden items-center gap-1 text-sm font-medium text-primary transition hover:gap-2 md:flex"
+          >
+            {t.products.viewAll} <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {featured.map((product, i) => (
+            <div key={product.id} className="opacity-0 animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 text-center md:hidden">
+          <Link
+            to="/products"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"
+          >
+            {t.products.viewAll} <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default FeaturedProducts;
