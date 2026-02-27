@@ -51,11 +51,11 @@ const Products = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-5 sm:py-8">
         {/* Filters */}
-        <div className="mb-8 flex flex-wrap items-center gap-3">
+        <div className="mb-5 sm:mb-8 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
           {/* Search */}
-          <div className="flex flex-1 items-center rounded-full border border-border bg-card px-4 py-2">
+          <div className="flex flex-1 items-center rounded-full border border-border bg-card px-4 py-2.5 sm:py-2">
             <Search className="mr-2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
@@ -66,13 +66,13 @@ const Products = () => {
             />
           </div>
 
-          {/* Category pills */}
-          <div className="flex gap-2">
+          {/* Category pills - horizontal scroll on mobile */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {categories.map(cat => (
               <a
                 key={cat.value}
                 href={cat.value ? `/products?category=${cat.value}` : '/products'}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition active:scale-[0.96] ${
                   categoryFilter === cat.value || (!categoryFilter && !cat.value)
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-secondary text-secondary-foreground hover:bg-primary/10'
@@ -87,7 +87,7 @@ const Products = () => {
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
-            className="rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground outline-none"
+            className="w-full sm:w-auto rounded-full border border-border bg-card px-4 py-2.5 sm:py-2 text-sm text-foreground outline-none"
           >
             <option value="newest">Terbaru</option>
             <option value="price-low">Harga Terendah</option>
@@ -96,8 +96,8 @@ const Products = () => {
           </select>
         </div>
 
-        {/* Products grid */}
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {/* Products grid - 2 columns on mobile */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((product, i) => (
             <div key={product.id} className="opacity-0 animate-fade-in" style={{ animationDelay: `${i * 0.05}s` }}>
               <ProductCard product={product} />
