@@ -9,14 +9,14 @@ const FeaturedProducts = () => {
   const featured = mockProducts.slice(0, 4);
 
   return (
-    <section className="bg-secondary/30 py-16 md:py-24">
+    <section className="bg-secondary/30 py-10 sm:py-16 md:py-24">
       <div className="container mx-auto px-4">
-        <div className="mb-10 flex items-end justify-between">
+        <div className="mb-6 sm:mb-10 flex items-end justify-between">
           <div>
-            <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground md:text-4xl">
               {t.products.title}
             </h2>
-            <p className="mt-2 text-muted-foreground">{t.products.subtitle}</p>
+            <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-muted-foreground">{t.products.subtitle}</p>
           </div>
           <Link
             to="/products"
@@ -26,7 +26,7 @@ const FeaturedProducts = () => {
           </Link>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
           {featured.map((product, i) => (
             <div key={product.id} className="opacity-0 animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
               <ProductCard product={product} />
@@ -34,10 +34,10 @@ const FeaturedProducts = () => {
           ))}
         </div>
 
-        <div className="mt-8 text-center md:hidden">
+        <div className="mt-6 sm:mt-8 text-center md:hidden">
           <Link
             to="/products"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground active:scale-[0.98]"
           >
             {t.products.viewAll} <ArrowRight className="h-4 w-4" />
           </Link>

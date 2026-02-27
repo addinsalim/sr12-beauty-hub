@@ -50,10 +50,10 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8 md:py-12">
-        <div className="grid gap-10 md:grid-cols-2">
+      <div className="container mx-auto px-4 py-4 sm:py-8 md:py-12">
+        <div className="grid gap-6 sm:gap-10 md:grid-cols-2">
           {/* Image */}
-          <div className="overflow-hidden rounded-2xl bg-gradient-gold">
+          <div className="overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-gold aspect-square sm:aspect-auto">
             <img
               src={categoryImages[product.category]}
               alt={product.name}
@@ -160,16 +160,16 @@ const ProductDetail = () => {
               </span>
             </div>
 
-            {/* Actions */}
-            <div className="mb-6 flex gap-3">
-              <button className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-elegant transition hover:opacity-90">
+            {/* Actions - sticky on mobile */}
+            <div className="mb-6 flex gap-2 sm:gap-3">
+              <button className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 sm:py-3 text-sm font-semibold text-primary-foreground shadow-elegant transition active:scale-[0.98] hover:opacity-90">
                 <ShoppingBag className="h-4 w-4" />
                 {t.products.addToCart}
               </button>
-              <button className="flex h-12 w-12 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-secondary hover:text-foreground">
+              <button className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition active:bg-secondary hover:bg-secondary hover:text-foreground">
                 <Heart className="h-5 w-5" />
               </button>
-              <button className="flex h-12 w-12 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-secondary hover:text-foreground">
+              <button className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition active:bg-secondary hover:bg-secondary hover:text-foreground">
                 <Share2 className="h-5 w-5" />
               </button>
             </div>

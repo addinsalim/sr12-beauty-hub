@@ -48,47 +48,47 @@ const ProductCard = ({ product }: { product: Product }) => {
       </Link>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
         {/* Certifications */}
-        <div className="mb-2 flex items-center gap-2">
+        <div className="mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
           {product.bpom && (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-              <Shield className="h-3 w-3" /> {t.products.bpom}
+            <span className="flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium text-muted-foreground">
+              <Shield className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {t.products.bpom}
             </span>
           )}
           {product.halal && (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-              <Award className="h-3 w-3" /> {t.products.halal}
+            <span className="flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium text-muted-foreground">
+              <Award className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {t.products.halal}
             </span>
           )}
         </div>
 
         <Link to={`/products/${product.slug}`}>
-          <h3 className="mb-1 font-display text-sm font-semibold leading-snug text-card-foreground transition-colors hover:text-primary">
+          <h3 className="mb-1 font-display text-xs sm:text-sm font-semibold leading-snug text-card-foreground transition-colors hover:text-primary line-clamp-2">
             {product.name}
           </h3>
         </Link>
 
         {/* Rating */}
-        <div className="mb-2 flex items-center gap-1">
-          <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-          <span className="text-xs font-medium text-foreground">{product.rating}</span>
-          <span className="text-xs text-muted-foreground">({product.reviewCount})</span>
+        <div className="mb-1.5 sm:mb-2 flex items-center gap-1">
+          <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-gold text-gold" />
+          <span className="text-[10px] sm:text-xs font-medium text-foreground">{product.rating}</span>
+          <span className="text-[10px] sm:text-xs text-muted-foreground">({product.reviewCount})</span>
         </div>
 
         {/* Price */}
-        <div className="mt-auto flex items-baseline gap-2">
+        <div className="mt-auto flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
           {product.discount ? (
             <>
-              <span className="font-display text-lg font-bold text-primary">
+              <span className="font-display text-sm sm:text-lg font-bold text-primary">
                 {formatPrice(product.price * (1 - product.discount / 100))}
               </span>
-              <span className="text-xs text-muted-foreground line-through">
+              <span className="text-[10px] sm:text-xs text-muted-foreground line-through">
                 {formatPrice(product.price)}
               </span>
             </>
           ) : (
-            <span className="font-display text-lg font-bold text-primary">
+            <span className="font-display text-sm sm:text-lg font-bold text-primary">
               {formatPrice(product.price)}
             </span>
           )}
