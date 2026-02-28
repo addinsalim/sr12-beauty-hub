@@ -1,33 +1,54 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { fetchProducts } from '@/lib/supabaseHelpers';
 import { mockProducts } from '@/lib/mockData';
 import ProductCard from './ProductCard';
 
 const FeaturedProducts = () => {
   const { t } = useI18n();
-  const featured = mockProducts.slice(0, 4);
+  const [products, setProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchProducts().then(data => {
+      if (data.length > 0) {
+        setProducts(data.slice(0, 4).map((p: any) => ({
+          id: p.id, name: p.name, slug: p.slug,
+          category: p.categories?.slug || 'skincare',
+          price: Number(p.price), discount: p.discount || undefined,
+          stock: p.stock,
+          primaryImage: p.product_images?.find((i: any) => i.is_primary)?.image_url || p.product_images?.[0]?.image_url,
+          images: (p.product_images || []).map((i: any) => i.image_url),
+          rating: Number(p.rating), reviewCount: p.review_count || 0,
+          bpom: p.bpom, halal: p.halal,
+        })));
+      } else {
+        // Fallback to mock data if DB is empty
+        setProducts(mockProducts.slice(0, 4).map(p => ({
+          ...p, primaryImage: undefined,
+        })));
+      }
+    }).catch(() => {
+      setProducts(mockProducts.slice(0, 4).map(p => ({ ...p, primaryImage: undefined })));
+    });
+  }, []);
 
   return (
     <section className="bg-secondary/30 py-10 sm:py-16 md:py-24">
       <div className="container mx-auto px-4">
         <div className="mb-6 sm:mb-10 flex items-end justify-between">
           <div>
-            <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground md:text-4xl">
-              {t.products.title}
-            </h2>
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground md:text-4xl">{t.products.title}</h2>
             <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-muted-foreground">{t.products.subtitle}</p>
           </div>
-          <Link
-            to="/products"
-            className="hidden items-center gap-1 text-sm font-medium text-primary transition hover:gap-2 md:flex"
-          >
+          <Link to="/products" className="hidden items-center gap-1 text-sm font-medium text-primary transition hover:gap-2 md:flex">
             {t.products.viewAll} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-          {featured.map((product, i) => (
+          {products.map((product, i) => (
             <div key={product.id} className="opacity-0 animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
               <ProductCard product={product} />
             </div>
@@ -35,10 +56,7 @@ const FeaturedProducts = () => {
         </div>
 
         <div className="mt-6 sm:mt-8 text-center md:hidden">
-          <Link
-            to="/products"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground active:scale-[0.98]"
-          >
+          <Link to="/products" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground active:scale-[0.98]">
             {t.products.viewAll} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
