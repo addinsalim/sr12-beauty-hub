@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus } from 'lucide-react';
+import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { useAuth } from '@/hooks/useAuth';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { t, lang, setLang } = useI18n();
   const location = useLocation();
+  const { user, isAdmin, profile, signOut } = useAuth();
 
   const navLinks = [
     { href: '/', label: t.nav.home, icon: Home },
@@ -115,12 +117,23 @@ const Navbar = () => {
             <Search className="h-5 w-5" />
           </button>
 
-          <Link
-            to="/login"
-            className="hidden rounded-full p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:flex"
-          >
-            <User className="h-5 w-5" />
-          </Link>
+          {user ? (
+            <div className="hidden items-center gap-2 sm:flex">
+              {isAdmin && (
+                <Link to="/admin" className="rounded-full p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground">
+                  <LayoutDashboard className="h-5 w-5" />
+                </Link>
+              )}
+              <span className="text-sm text-muted-foreground truncate max-w-[100px]">{profile?.full_name || user.email?.split('@')[0]}</span>
+              <button onClick={signOut} className="rounded-full p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground">
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="hidden rounded-full p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:flex">
+              <User className="h-5 w-5" />
+            </Link>
+          )}
 
           <Link
             to="/cart"
@@ -195,22 +208,27 @@ const Navbar = () => {
 
               <div className="my-2 mx-4 border-t border-border" />
 
-              <Link
-                to="/login"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-primary active:bg-secondary"
-              >
-                <LogIn className="h-5 w-5" />
-                {t.nav.login}
-              </Link>
-              <Link
-                to="/register"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-primary active:bg-secondary"
-              >
-                <UserPlus className="h-5 w-5" />
-                {t.nav.register}
-              </Link>
+              {user ? (
+                <>
+                  {isAdmin && (
+                    <Link to="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-primary active:bg-secondary">
+                      <LayoutDashboard className="h-5 w-5" /> Admin Dashboard
+                    </Link>
+                  )}
+                  <button onClick={() => { signOut(); setIsOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-destructive active:bg-secondary">
+                    <LogOut className="h-5 w-5" /> Keluar
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-primary active:bg-secondary">
+                    <LogIn className="h-5 w-5" /> {t.nav.login}
+                  </Link>
+                  <Link to="/register" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-primary active:bg-secondary">
+                    <UserPlus className="h-5 w-5" /> {t.nav.register}
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
         </>
