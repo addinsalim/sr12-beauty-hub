@@ -9,39 +9,65 @@ export const formatPrice = (price: number): string => {
   }).format(price);
 };
 
-// Public product columns (excludes reseller_price)
-const PUBLIC_PRODUCT_COLUMNS = 'id, name, slug, category_id, price, discount, stock, description, rating, review_count, bpom, halal, weight, expired_date, is_active, created_at, updated_at, categories(name, slug), product_images(id, image_url, is_primary, sort_order), variants(id, name, type, price, stock)';
-
-// Product queries (public-facing — no reseller_price)
+// Product queries (public-facing — uses products_public view to exclude reseller_price)
 export async function fetchProducts(categorySlug?: string) {
-  let query = supabase
-    .from('products')
-    .select(PUBLIC_PRODUCT_COLUMNS)
+  // Query the public view (no reseller_price column)
+  const { data: products, error } = await (supabase
+    .from('products_public')
+    .select('*') as any)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
-
-  if (categorySlug) {
-    query = query.eq('categories.slug', categorySlug);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
-  
-  // Filter by category if needed (since join filter works differently)
+  const productList = products || [];
+
+  if (productList.length === 0) return [];
+
+  const productIds = productList.map((p: any) => p.id);
+
+  // Fetch related data separately (these tables have public SELECT policies)
+  const [{ data: images }, { data: variants }, { data: categories }] = await Promise.all([
+    supabase.from('product_images').select('id, image_url, is_primary, sort_order, product_id').in('product_id', productIds),
+    supabase.from('variants').select('id, name, type, price, stock, product_id').in('product_id', productIds),
+    supabase.from('categories').select('id, name, slug'),
+  ]);
+
+  const catMap = Object.fromEntries((categories || []).map((c: any) => [c.id, c]));
+
+  let result = productList.map((p: any) => ({
+    ...p,
+    categories: catMap[p.category_id] || null,
+    product_images: (images || []).filter((i: any) => i.product_id === p.id),
+    variants: (variants || []).filter((v: any) => v.product_id === p.id),
+  }));
+
   if (categorySlug) {
-    return (data || []).filter((p: any) => p.categories?.slug === categorySlug);
+    result = result.filter((p: any) => p.categories?.slug === categorySlug);
   }
-  return data || [];
+
+  return result;
 }
 
 export async function fetchProductBySlug(slug: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(PUBLIC_PRODUCT_COLUMNS)
+  const { data: product, error } = await (supabase
+    .from('products_public')
+    .select('*') as any)
     .eq('slug', slug)
     .single();
   if (error) throw error;
-  return data;
+
+  // Fetch related data
+  const [{ data: images }, { data: variants }, { data: category }] = await Promise.all([
+    supabase.from('product_images').select('id, image_url, is_primary, sort_order').eq('product_id', product.id),
+    supabase.from('variants').select('id, name, type, price, stock').eq('product_id', product.id),
+    product.category_id ? supabase.from('categories').select('name, slug').eq('id', product.category_id).single() : Promise.resolve({ data: null }),
+  ]);
+
+  return {
+    ...product,
+    categories: category,
+    product_images: images || [],
+    variants: variants || [],
+  };
 }
 
 export async function fetchCategories() {
