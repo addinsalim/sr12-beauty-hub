@@ -9,11 +9,14 @@ export const formatPrice = (price: number): string => {
   }).format(price);
 };
 
-// Product queries
+// Public product columns (excludes reseller_price)
+const PUBLIC_PRODUCT_COLUMNS = 'id, name, slug, category_id, price, discount, stock, description, rating, review_count, bpom, halal, weight, expired_date, is_active, created_at, updated_at, categories(name, slug), product_images(id, image_url, is_primary, sort_order), variants(id, name, type, price, stock)';
+
+// Product queries (public-facing — no reseller_price)
 export async function fetchProducts(categorySlug?: string) {
   let query = supabase
     .from('products')
-    .select(`*, categories(name, slug), product_images(id, image_url, is_primary, sort_order), variants(id, name, type, price, stock)`)
+    .select(PUBLIC_PRODUCT_COLUMNS)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
@@ -34,7 +37,7 @@ export async function fetchProducts(categorySlug?: string) {
 export async function fetchProductBySlug(slug: string) {
   const { data, error } = await supabase
     .from('products')
-    .select(`*, categories(name, slug), product_images(id, image_url, is_primary, sort_order), variants(id, name, type, price, stock)`)
+    .select(PUBLIC_PRODUCT_COLUMNS)
     .eq('slug', slug)
     .single();
   if (error) throw error;
@@ -78,8 +81,22 @@ export async function deleteVariant(id: string) {
 }
 
 // Product images
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
 export async function uploadProductImage(file: File, productId: string) {
-  const ext = file.name.split('.').pop();
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error('Ukuran file maksimal 5MB');
+  }
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    throw new Error('Hanya file gambar (JPG, PNG, WebP, GIF) yang diizinkan');
+  }
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new Error('Ekstensi file tidak valid');
+  }
+
   const path = `${productId}/${Date.now()}.${ext}`;
   const { error: uploadError } = await supabase.storage.from('product-images').upload(path, file);
   if (uploadError) throw uploadError;
