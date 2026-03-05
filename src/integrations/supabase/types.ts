@@ -163,6 +163,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "order_items_variant_id_fkey"
             columns: ["variant_id"]
             isOneToOne: false
@@ -299,6 +306,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
             referencedColumns: ["id"]
           },
         ]
@@ -473,6 +487,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       shipments: {
@@ -576,11 +597,85 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      products_public: {
+        Row: {
+          bpom: boolean | null
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          discount: number | null
+          expired_date: string | null
+          halal: boolean | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          price: number | null
+          rating: number | null
+          review_count: number | null
+          slug: string | null
+          stock: number | null
+          updated_at: string | null
+          weight: number | null
+        }
+        Insert: {
+          bpom?: boolean | null
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          discount?: number | null
+          expired_date?: string | null
+          halal?: boolean | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          price?: number | null
+          rating?: number | null
+          review_count?: number | null
+          slug?: string | null
+          stock?: number | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Update: {
+          bpom?: boolean | null
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          discount?: number | null
+          expired_date?: string | null
+          halal?: boolean | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          price?: number | null
+          rating?: number | null
+          review_count?: number | null
+          slug?: string | null
+          stock?: number | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
