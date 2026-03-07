@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Star, Shield, Award, Minus, Plus, Heart, Share2, Truck, ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { fetchProductBySlug, formatPrice } from '@/lib/supabaseHelpers';
@@ -20,6 +20,7 @@ const ProductDetail = () => {
   const { slug } = useParams();
   const { t } = useI18n();
   const { addItem } = useCart();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -129,6 +130,10 @@ const ProductDetail = () => {
             <div className="mb-6 flex gap-2 sm:gap-3">
               <button
                 onClick={() => {
+                  if (variants.length > 1 && !variant) {
+                    toast({ title: 'Pilih varian', description: 'Harap pilih varian produk terlebih dahulu.', variant: 'destructive' });
+                    return;
+                  }
                   addItem({
                     productId: product.id,
                     variantId: variant?.id,
@@ -141,9 +146,32 @@ const ProductDetail = () => {
                   }, quantity);
                   toast({ title: 'Ditambahkan ke keranjang', description: `${product.name} x${quantity}` });
                 }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 sm:py-3 text-sm font-semibold text-primary-foreground shadow-elegant transition active:scale-[0.98] hover:opacity-90"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-primary bg-transparent py-3.5 sm:py-3 text-sm font-semibold text-primary shadow-elegant transition active:scale-[0.98] hover:bg-primary/5"
               >
                 <ShoppingBag className="h-4 w-4" /> {t.products.addToCart}
+              </button>
+              <button
+                onClick={() => {
+                  if (variants.length > 1 && !variant) {
+                    toast({ title: 'Pilih varian', description: 'Harap pilih varian produk terlebih dahulu.', variant: 'destructive' });
+                    return;
+                  }
+                  const buyNowItem = {
+                    productId: product.id,
+                    variantId: variant?.id,
+                    name: product.name,
+                    variantName: variant?.name,
+                    price: finalPrice,
+                    image: imgSrc,
+                    slug: product.slug,
+                    stock: variant?.stock || product.stock,
+                    quantity,
+                  };
+                  navigate('/checkout', { state: { buyNowItem } });
+                }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 sm:py-3 text-sm font-semibold text-primary-foreground shadow-elegant transition active:scale-[0.98] hover:opacity-90"
+              >
+                Beli Sekarang
               </button>
               <button className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition active:bg-secondary hover:bg-secondary hover:text-foreground"><Heart className="h-5 w-5" /></button>
               <button className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition active:bg-secondary hover:bg-secondary hover:text-foreground"><Share2 className="h-5 w-5" /></button>

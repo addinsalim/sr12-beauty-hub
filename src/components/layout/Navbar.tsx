@@ -126,6 +126,9 @@ const Navbar = () => {
                   <LayoutDashboard className="h-5 w-5" />
                 </Link>
               )}
+              <Link to="/my-orders" className="rounded-full p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground">
+                <Package className="h-5 w-5" />
+              </Link>
               <span className="text-sm text-muted-foreground truncate max-w-[100px]">{profile?.full_name || user.email?.split('@')[0]}</span>
               <button onClick={signOut} className="rounded-full p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground">
                 <LogOut className="h-5 w-5" />
@@ -217,6 +220,9 @@ const Navbar = () => {
                       <LayoutDashboard className="h-5 w-5" /> Admin Dashboard
                     </Link>
                   )}
+                  <Link to="/my-orders" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground active:bg-secondary">
+                    <Package className="h-5 w-5" /> Pesanan Saya
+                  </Link>
                   <button onClick={() => { signOut(); setIsOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-destructive active:bg-secondary">
                     <LogOut className="h-5 w-5" /> Keluar
                   </button>
