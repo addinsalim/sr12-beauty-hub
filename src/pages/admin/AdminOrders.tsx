@@ -55,7 +55,7 @@ const AdminOrders = () => {
       if (order?.order_items) {
         for (const item of order.order_items) {
           if (item.variant_id) {
-            await supabase.rpc('restore_variant_stock', { p_variant_id: item.variant_id, p_quantity: item.quantity });
+            await (supabase.rpc as any)('restore_variant_stock', { p_variant_id: item.variant_id, p_quantity: item.quantity });
           }
         }
       }
