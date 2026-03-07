@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { ShoppingBag, Star, Shield, Award, Minus, Plus, Heart, Share2, Truck, ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { fetchProductBySlug, formatPrice } from '@/lib/supabaseHelpers';
+import { useCart } from '@/hooks/useCart';
+import { useToast } from '@/hooks/use-toast';
 import productParfum from '@/assets/product-parfum.png';
 import productSkincare from '@/assets/product-skincare.png';
 import productKosmetik from '@/assets/product-kosmetik.png';
@@ -17,6 +19,8 @@ const categoryImages: Record<string, string> = {
 const ProductDetail = () => {
   const { slug } = useParams();
   const { t } = useI18n();
+  const { addItem } = useCart();
+  const { toast } = useToast();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState(0);
@@ -123,7 +127,22 @@ const ProductDetail = () => {
             </div>
 
             <div className="mb-6 flex gap-2 sm:gap-3">
-              <button className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 sm:py-3 text-sm font-semibold text-primary-foreground shadow-elegant transition active:scale-[0.98] hover:opacity-90">
+              <button
+                onClick={() => {
+                  addItem({
+                    productId: product.id,
+                    variantId: variant?.id,
+                    name: product.name,
+                    variantName: variant?.name,
+                    price: finalPrice,
+                    image: imgSrc,
+                    slug: product.slug,
+                    stock: variant?.stock || product.stock,
+                  }, quantity);
+                  toast({ title: 'Ditambahkan ke keranjang', description: `${product.name} x${quantity}` });
+                }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 sm:py-3 text-sm font-semibold text-primary-foreground shadow-elegant transition active:scale-[0.98] hover:opacity-90"
+              >
                 <ShoppingBag className="h-4 w-4" /> {t.products.addToCart}
               </button>
               <button className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition active:bg-secondary hover:bg-secondary hover:text-foreground"><Heart className="h-5 w-5" /></button>
