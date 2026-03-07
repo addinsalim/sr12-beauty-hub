@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/hooks/useCart';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,7 @@ const Navbar = () => {
   const { t, lang, setLang } = useI18n();
   const location = useLocation();
   const { user, isAdmin, profile, signOut } = useAuth();
+  const { totalItems } = useCart();
 
   const navLinks = [
     { href: '/', label: t.nav.home, icon: Home },
@@ -141,7 +143,7 @@ const Navbar = () => {
           >
             <ShoppingBag className="h-5 w-5" />
             <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">
-              0
+              {totalItems}
             </span>
           </Link>
 

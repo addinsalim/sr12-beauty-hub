@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Star, Shield, Award } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { useCart } from '@/hooks/useCart';
+import { useToast } from '@/hooks/use-toast';
 import { formatPrice } from '@/lib/supabaseHelpers';
 import productParfum from '@/assets/product-parfum.png';
 import productSkincare from '@/assets/product-skincare.png';
@@ -30,6 +32,8 @@ interface ProductCardProduct {
 
 const ProductCard = ({ product }: { product: ProductCardProduct }) => {
   const { t } = useI18n();
+  const { addItem } = useCart();
+  const { toast } = useToast();
   const isOutOfStock = product.stock === 0;
   const imgSrc = product.primaryImage || product.images?.[0] || categoryImages[product.category] || productParfum;
 
@@ -47,10 +51,25 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
       <Link to={`/products/${product.slug}`} className="relative aspect-square overflow-hidden bg-gradient-gold">
         <img src={imgSrc} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
         {!isOutOfStock && (
-          <div className="absolute inset-x-0 bottom-0 flex translate-y-full items-center justify-center bg-primary/90 py-3 backdrop-blur-sm transition-transform duration-300 group-hover:translate-y-0">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              const finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+              addItem({
+                productId: product.id,
+                name: product.name,
+                price: finalPrice,
+                image: imgSrc,
+                slug: product.slug,
+                stock: product.stock,
+              });
+              toast({ title: 'Ditambahkan ke keranjang', description: product.name });
+            }}
+            className="absolute inset-x-0 bottom-0 flex translate-y-full items-center justify-center bg-primary/90 py-3 backdrop-blur-sm transition-transform duration-300 group-hover:translate-y-0"
+          >
             <ShoppingBag className="mr-2 h-4 w-4 text-primary-foreground" />
             <span className="text-sm font-medium text-primary-foreground">{t.products.addToCart}</span>
-          </div>
+          </button>
         )}
       </Link>
 
