@@ -685,6 +685,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      reduce_variant_stock: {
+        Args: { p_quantity: number; p_variant_id: string }
+        Returns: undefined
+      }
+      restore_variant_stock: {
+        Args: { p_quantity: number; p_variant_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "reseller" | "customer" | "courier"

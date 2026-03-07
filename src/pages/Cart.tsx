@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useI18n } from '@/lib/i18n';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 const Cart = () => {
   const { items, updateQuantity, removeItem, clearCart, totalItems, totalPrice } = useCart();
   const { t } = useI18n();
+  const navigate = useNavigate();
 
   if (items.length === 0) {
     return (
@@ -103,7 +104,7 @@ const Cart = () => {
                 <span className="text-card-foreground">Total</span>
                 <span className="text-primary">{formatPrice(totalPrice)}</span>
               </div>
-              <Button className="mt-5 w-full rounded-full" size="lg">
+              <Button className="mt-5 w-full rounded-full" size="lg" onClick={() => navigate('/checkout')}>
                 Checkout ({totalItems})
               </Button>
               <Link to="/products" className="mt-3 flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-primary transition">
