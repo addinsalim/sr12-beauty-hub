@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
-type AppRole = 'owner' | 'admin' | 'reseller' | 'customer' | 'courier';
+type AppRole = 'owner' | 'admin' | 'customer' | 'courier';
 
 interface AuthContextType {
   user: User | null;
@@ -36,10 +36,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    // Set up auth listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        // Use setTimeout to avoid deadlock
         setTimeout(() => fetchUserData(session.user.id), 0);
       } else {
         setRoles([]);
@@ -48,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
+    // Then get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);

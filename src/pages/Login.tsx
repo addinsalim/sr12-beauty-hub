@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const Login = () => {
   const { t } = useI18n();
-  const { signIn, user, isAdmin } = useAuth();
+  const { signIn, user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
@@ -16,10 +16,12 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   // Redirect if already logged in
-  if (user) {
-    if (isAdmin) navigate('/admin');
-    else navigate('/');
-  }
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (isAdmin) navigate('/admin', { replace: true });
+      else navigate('/', { replace: true });
+    }
+  }, [user, isAdmin, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +34,9 @@ const Login = () => {
       toast({ title: 'Login berhasil!' });
     }
   };
+
+  if (authLoading) return null;
+  if (user) return null;
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center bg-background px-4 py-12">
