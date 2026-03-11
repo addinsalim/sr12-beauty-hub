@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User, Phone, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -10,10 +10,7 @@ const Register = () => {
   const { signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
-  const defaultRole = searchParams.get('role') === 'reseller' ? 'reseller' : 'customer';
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<'customer' | 'reseller'>(defaultRole);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,23 +43,6 @@ const Register = () => {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-medium text-foreground">{t.auth.registerAs}</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['customer', 'reseller'] as const).map(r => (
-                <button key={r} onClick={() => setRole(r)} className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition ${role === r ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
-                  {r === 'customer' ? t.auth.customer : t.auth.reseller}
-                </button>
-              ))}
-            </div>
-            {role === 'reseller' && (
-              <div className="mt-2 flex items-start gap-2 rounded-lg bg-accent/10 p-3">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                <p className="text-xs text-muted-foreground">{t.auth.resellerNote}</p>
-              </div>
-            )}
-          </div>
-
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">{t.auth.name}</label>

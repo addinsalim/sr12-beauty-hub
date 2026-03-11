@@ -50,7 +50,7 @@ const HeroSection = () => {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              to="/register?role=reseller"
+              to="/about"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card/80 px-6 py-3.5 sm:py-3 text-sm font-semibold text-foreground backdrop-blur-sm transition-all active:scale-[0.98] hover:bg-secondary"
             >
               {t.hero.ctaSecondary}
@@ -62,7 +62,7 @@ const HeroSection = () => {
             {[
               { value: '10K+', label: 'Pelanggan Puas' },
               { value: '500+', label: 'Produk' },
-              { value: '50+', label: 'Reseller Aktif' },
+              { value: '100%', label: 'Bahan Alami' },
             ].map(stat => (
               <div key={stat.label} className="text-center sm:text-left">
                 <div className="font-display text-xl sm:text-2xl font-bold text-foreground">{stat.value}</div>

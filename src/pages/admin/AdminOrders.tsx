@@ -35,11 +35,30 @@ const AdminOrders = () => {
 
   const fetchOrders = async () => {
     setLoading(true);
+    // Fetch orders with items, payments, shipments, addresses
     const { data } = await supabase
       .from('orders')
-      .select('*, profiles:user_id(full_name, phone), order_items(*, products:product_id(name), variants:variant_id(name)), payments(*), shipments(*), addresses:address_id(*)')
+      .select('*, order_items(*, products:product_id(name), variants:variant_id(name)), payments(*), shipments(*), addresses:address_id(*)')
       .order('created_at', { ascending: false });
-    setOrders(data || []);
+    
+    if (data && data.length > 0) {
+      // Fetch profiles for user_ids
+      const userIds = [...new Set(data.map((o: any) => o.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .in('user_id', userIds);
+      
+      const profileMap = Object.fromEntries((profiles || []).map((p: any) => [p.user_id, p]));
+      
+      const enriched = data.map((o: any) => ({
+        ...o,
+        profile: profileMap[o.user_id] || null,
+      }));
+      setOrders(enriched);
+    } else {
+      setOrders([]);
+    }
     setLoading(false);
   };
 
@@ -118,7 +137,7 @@ const AdminOrders = () => {
             const shipment = order.shipments?.[0];
             const payment = order.payments?.[0];
             const address = order.addresses;
-            const profile = order.profiles;
+            const profile = order.profile;
 
             return (
               <div key={order.id} className="rounded-xl border border-border bg-card overflow-hidden">

@@ -11,11 +11,9 @@ export const formatPrice = (price: number): string => {
 
 // Product queries (public-facing — uses products_public view to exclude reseller_price)
 export async function fetchProducts(categorySlug?: string) {
-  // Query the public view (no reseller_price column)
   const { data: products, error } = await (supabase
     .from('products_public')
     .select('*') as any)
-    .eq('is_active', true)
     .order('created_at', { ascending: false });
   if (error) throw error;
   const productList = products || [];

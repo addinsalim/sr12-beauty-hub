@@ -23,7 +23,7 @@ const translations = {
       titleAccent: 'Pesona Abadi',
       subtitle: 'Temukan koleksi parfum, kosmetik, dan skincare terbaik dengan bahan alami berkualitas tinggi.',
       cta: 'Jelajahi Koleksi',
-      ctaSecondary: 'Daftar Reseller',
+      ctaSecondary: 'Tentang Kami',
     },
     categories: {
       title: 'Kategori Produk',
@@ -67,10 +67,6 @@ const translations = {
       noAccount: 'Belum punya akun?',
       hasAccount: 'Sudah punya akun?',
       loginWith: 'Atau masuk dengan',
-      registerAs: 'Daftar sebagai',
-      customer: 'Customer',
-      reseller: 'Reseller',
-      resellerNote: 'Pendaftaran reseller memerlukan persetujuan admin.',
     },
   },
   en: {
@@ -93,7 +89,7 @@ const translations = {
       titleAccent: 'Timeless Elegance',
       subtitle: 'Discover our finest collection of perfumes, cosmetics, and skincare made with premium natural ingredients.',
       cta: 'Explore Collection',
-      ctaSecondary: 'Become a Reseller',
+      ctaSecondary: 'About Us',
     },
     categories: {
       title: 'Product Categories',
@@ -137,10 +133,6 @@ const translations = {
       noAccount: "Don't have an account?",
       hasAccount: 'Already have an account?',
       loginWith: 'Or login with',
-      registerAs: 'Register as',
-      customer: 'Customer',
-      reseller: 'Reseller',
-      resellerNote: 'Reseller registration requires admin approval.',
     },
   },
 } as const;
