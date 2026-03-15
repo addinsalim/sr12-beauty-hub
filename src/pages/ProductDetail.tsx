@@ -54,8 +54,13 @@ const ProductDetail = () => {
   const variant = variants[selectedVariant];
   const displayPrice = variant ? Number(variant.price) : Number(product.price);
   const finalPrice = product.discount ? displayPrice * (1 - product.discount / 100) : displayPrice;
-  const primaryImage = product.product_images?.find((i: any) => i.is_primary)?.image_url || product.product_images?.[0]?.image_url;
-  const imgSrc = primaryImage || categoryImages[product.categories?.slug] || productParfum;
+  const allImages = (product.product_images || [])
+    .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || (a.sort_order || 0) - (b.sort_order || 0))
+    .map((i: any) => i.image_url);
+  if (allImages.length === 0) {
+    allImages.push(categoryImages[product.categories?.slug] || productParfum);
+  }
+  const imgSrc = allImages[selectedImageIndex] || allImages[0];
 
   return (
     <div className="min-h-screen bg-background">
