@@ -25,6 +25,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -53,8 +54,13 @@ const ProductDetail = () => {
   const variant = variants[selectedVariant];
   const displayPrice = variant ? Number(variant.price) : Number(product.price);
   const finalPrice = product.discount ? displayPrice * (1 - product.discount / 100) : displayPrice;
-  const primaryImage = product.product_images?.find((i: any) => i.is_primary)?.image_url || product.product_images?.[0]?.image_url;
-  const imgSrc = primaryImage || categoryImages[product.categories?.slug] || productParfum;
+  const allImages = (product.product_images || [])
+    .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || (a.sort_order || 0) - (b.sort_order || 0))
+    .map((i: any) => i.image_url);
+  if (allImages.length === 0) {
+    allImages.push(categoryImages[product.categories?.slug] || productParfum);
+  }
+  const imgSrc = allImages[selectedImageIndex] || allImages[0];
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,8 +76,23 @@ const ProductDetail = () => {
 
       <div className="container mx-auto px-4 py-4 sm:py-8 md:py-12">
         <div className="grid gap-6 sm:gap-10 md:grid-cols-2">
-          <div className="overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-gold aspect-square sm:aspect-auto">
-            <img src={imgSrc} alt={product.name} className="h-full w-full object-cover" />
+          <div className="space-y-3">
+            <div className="overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-gold aspect-square">
+              <img src={imgSrc} alt={product.name} className="h-full w-full object-cover" />
+            </div>
+            {allImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {allImages.map((url: string, i: number) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImageIndex(i)}
+                    className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition sm:h-20 sm:w-20 ${selectedImageIndex === i ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/50'}`}
+                  >
+                    <img src={url} alt={`${product.name} ${i + 1}`} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col">
