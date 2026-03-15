@@ -76,8 +76,23 @@ const ProductDetail = () => {
 
       <div className="container mx-auto px-4 py-4 sm:py-8 md:py-12">
         <div className="grid gap-6 sm:gap-10 md:grid-cols-2">
-          <div className="overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-gold aspect-square sm:aspect-auto">
-            <img src={imgSrc} alt={product.name} className="h-full w-full object-cover" />
+          <div className="space-y-3">
+            <div className="overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-gold aspect-square">
+              <img src={imgSrc} alt={product.name} className="h-full w-full object-cover" />
+            </div>
+            {allImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {allImages.map((url: string, i: number) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImageIndex(i)}
+                    className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition sm:h-20 sm:w-20 ${selectedImageIndex === i ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/50'}`}
+                  >
+                    <img src={url} alt={`${product.name} ${i + 1}`} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col">
