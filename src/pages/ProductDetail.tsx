@@ -9,6 +9,7 @@ import productParfum from '@/assets/product-parfum.png';
 import productSkincare from '@/assets/product-skincare.png';
 import productKosmetik from '@/assets/product-kosmetik.png';
 import ProductCard from '@/components/ProductCard';
+import ProductReviews from '@/components/ProductReviews';
 
 const categoryImages: Record<string, string> = {
   parfum: productParfum,
@@ -211,9 +212,14 @@ const ProductDetail = () => {
                 <div className="rounded-lg bg-secondary/50 p-3"><span className="text-muted-foreground">Expired:</span><span className="ml-1 font-medium text-foreground">{product.expired_date || '-'}</span></div>
               </div>
             </div>
-          </div>
         </div>
+
+        {/* Reviews Section */}
+        <ProductReviews productId={product.id} onReviewAdded={() => {
+          fetchProductBySlug(slug!).then(data => setProduct(data));
+        }} />
       </div>
+    </div>
     </div>
   );
 };
