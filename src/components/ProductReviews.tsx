@@ -1,10 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Star, MessageSquare, User, Pencil, Trash2, X } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Star, MessageSquare, User, Pencil, Trash2, X, ImagePlus, ZoomIn } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+
+interface ReviewImage {
+  id: string;
+  image_url: string;
+  sort_order: number;
+}
 
 interface Review {
   id: string;
@@ -13,12 +20,17 @@ interface Review {
   created_at: string;
   user_id: string;
   profile?: { full_name: string | null; avatar_url: string | null };
+  images?: ReviewImage[];
 }
 
 interface ProductReviewsProps {
   productId: string;
   onReviewAdded?: () => void;
 }
+
+const MAX_IMAGES = 5;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 const StarRating = ({ rating, onChange, size = 'md' }: { rating: number; onChange?: (r: number) => void; size?: 'sm' | 'md' }) => {
   const [hover, setHover] = useState(0);
@@ -56,6 +68,95 @@ const RatingBar = ({ star, count, total }: { star: number; count: number; total:
   );
 };
 
+const ImageUploader = ({
+  images,
+  onAdd,
+  onRemove,
+  disabled,
+}: {
+  images: { file?: File; url: string; id?: string }[];
+  onAdd: (files: File[]) => void;
+  onRemove: (index: number) => void;
+  disabled?: boolean;
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    onAdd(files);
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {images.map((img, i) => (
+        <div key={i} className="group relative h-20 w-20 overflow-hidden rounded-lg border border-border">
+          <img src={img.url} alt="" className="h-full w-full object-cover" />
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => onRemove(i)}
+              className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition group-hover:opacity-100"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      ))}
+      {images.length < MAX_IMAGES && !disabled && (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+        >
+          <ImagePlus className="h-5 w-5" />
+          <span className="text-[10px]">Foto</span>
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        multiple
+        className="hidden"
+        onChange={handleChange}
+      />
+    </div>
+  );
+};
+
+const ReviewImageGallery = ({ images }: { images: ReviewImage[] }) => {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  if (!images || images.length === 0) return null;
+
+  return (
+    <>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {images.map(img => (
+          <button
+            key={img.id}
+            onClick={() => setLightboxUrl(img.image_url)}
+            className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border transition hover:border-primary sm:h-20 sm:w-20"
+          >
+            <img src={img.image_url} alt="" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 transition group-hover:bg-foreground/20">
+              <ZoomIn className="h-4 w-4 text-background opacity-0 transition group-hover:opacity-100" />
+            </div>
+          </button>
+        ))}
+      </div>
+      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+        <DialogContent className="max-w-2xl border-none bg-transparent p-0 shadow-none">
+          {lightboxUrl && (
+            <img src={lightboxUrl} alt="" className="max-h-[80vh] w-full rounded-xl object-contain" />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -70,6 +171,59 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
   const [editComment, setEditComment] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // Image states
+  const [newImages, setNewImages] = useState<{ file: File; url: string }[]>([]);
+  const [editImages, setEditImages] = useState<{ file?: File; url: string; id?: string }[]>([]);
+  const [editRemovedImageIds, setEditRemovedImageIds] = useState<string[]>([]);
+
+  const validateAndAddImages = (
+    files: File[],
+    current: { file?: File; url: string }[],
+    setter: (imgs: any[]) => void
+  ) => {
+    const remaining = MAX_IMAGES - current.length;
+    const valid: { file: File; url: string }[] = [];
+
+    for (const file of files.slice(0, remaining)) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast({ title: 'Format tidak didukung', description: 'Gunakan JPEG, PNG, WebP, atau GIF.', variant: 'destructive' });
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast({ title: 'File terlalu besar', description: 'Maksimal 5MB per gambar.', variant: 'destructive' });
+        continue;
+      }
+      valid.push({ file, url: URL.createObjectURL(file) });
+    }
+
+    if (valid.length > 0) setter([...current, ...valid]);
+  };
+
+  const uploadImages = async (reviewId: string, files: File[]): Promise<string[]> => {
+    const urls: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${user!.id}/${reviewId}/${Date.now()}-${i}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from('review-images')
+        .upload(path, file, { contentType: file.type });
+
+      if (error) {
+        console.error('Upload error:', error);
+        continue;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('review-images')
+        .getPublicUrl(path);
+
+      urls.push(urlData.publicUrl);
+    }
+    return urls;
+  };
+
   const fetchReviews = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -81,20 +235,33 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
     if (error) { setLoading(false); return; }
 
     const reviewList = data || [];
+    const reviewIds = reviewList.map(r => r.id);
     const userIds = [...new Set(reviewList.map(r => r.user_id))];
 
-    let profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
-    if (userIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, avatar_url')
-        .in('user_id', userIds);
-      if (profiles) {
-        profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
-      }
-    }
+    // Fetch profiles and images in parallel
+    const [profilesRes, imagesRes] = await Promise.all([
+      userIds.length > 0
+        ? supabase.from('profiles').select('user_id, full_name, avatar_url').in('user_id', userIds)
+        : Promise.resolve({ data: [] }),
+      reviewIds.length > 0
+        ? supabase.from('review_images').select('*').in('review_id', reviewIds).order('sort_order')
+        : Promise.resolve({ data: [] }),
+    ]);
 
-    const enriched = reviewList.map(r => ({ ...r, profile: profileMap[r.user_id] }));
+    const profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
+    (profilesRes.data || []).forEach(p => { profileMap[p.user_id] = p; });
+
+    const imageMap: Record<string, ReviewImage[]> = {};
+    (imagesRes.data || []).forEach((img: any) => {
+      if (!imageMap[img.review_id]) imageMap[img.review_id] = [];
+      imageMap[img.review_id].push(img);
+    });
+
+    const enriched = reviewList.map(r => ({
+      ...r,
+      profile: profileMap[r.user_id],
+      images: imageMap[r.id] || [],
+    }));
     setReviews(enriched);
 
     if (user) {
@@ -141,17 +308,27 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
     }
 
     setSubmitting(true);
-    const { error } = await supabase.from('reviews').insert({
+    const { data: insertedReview, error } = await supabase.from('reviews').insert({
       product_id: productId,
       user_id: user.id,
       rating: newRating,
       comment: trimmed || null,
-    });
+    }).select('id').single();
 
-    if (error) {
-      toast({ title: 'Gagal mengirim ulasan', description: error.message, variant: 'destructive' });
+    if (error || !insertedReview) {
+      toast({ title: 'Gagal mengirim ulasan', description: error?.message, variant: 'destructive' });
       setSubmitting(false);
       return;
+    }
+
+    // Upload images
+    if (newImages.length > 0) {
+      const urls = await uploadImages(insertedReview.id, newImages.map(i => i.file));
+      if (urls.length > 0) {
+        await supabase.from('review_images').insert(
+          urls.map((url, idx) => ({ review_id: insertedReview.id, image_url: url, sort_order: idx }))
+        );
+      }
     }
 
     const updatedReviews = [...reviews.map(r => ({ rating: r.rating })), { rating: newRating }];
@@ -160,6 +337,7 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
     toast({ title: 'Ulasan terkirim', description: 'Terima kasih atas ulasan Anda!' });
     setNewRating(0);
     setNewComment('');
+    setNewImages([]);
     setSubmitting(false);
     fetchReviews();
     onReviewAdded?.();
@@ -169,12 +347,16 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
     setEditingReview(review);
     setEditRating(review.rating);
     setEditComment(review.comment || '');
+    setEditImages((review.images || []).map(img => ({ url: img.image_url, id: img.id })));
+    setEditRemovedImageIds([]);
   };
 
   const handleCancelEdit = () => {
     setEditingReview(null);
     setEditRating(0);
     setEditComment('');
+    setEditImages([]);
+    setEditRemovedImageIds([]);
   };
 
   const handleSaveEdit = async () => {
@@ -197,6 +379,23 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
       return;
     }
 
+    // Delete removed images
+    if (editRemovedImageIds.length > 0) {
+      await supabase.from('review_images').delete().in('id', editRemovedImageIds);
+    }
+
+    // Upload new images
+    const newFiles = editImages.filter(img => img.file).map(img => img.file!);
+    if (newFiles.length > 0) {
+      const urls = await uploadImages(editingReview.id, newFiles);
+      if (urls.length > 0) {
+        const existingCount = editImages.filter(img => !img.file).length;
+        await supabase.from('review_images').insert(
+          urls.map((url, idx) => ({ review_id: editingReview.id, image_url: url, sort_order: existingCount + idx }))
+        );
+      }
+    }
+
     const updatedReviews = reviews.map(r =>
       r.id === editingReview.id ? { rating: editRating } : { rating: r.rating }
     );
@@ -213,6 +412,7 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
     if (!confirm('Apakah Anda yakin ingin menghapus ulasan ini?')) return;
 
     setDeleting(true);
+    // Images will be cascade-deleted from review_images table
     const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
 
     if (error) {
@@ -273,6 +473,17 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
             />
             <span className="mt-1 block text-right text-xs text-muted-foreground">{newComment.length}/500</span>
           </div>
+          <div className="mb-3">
+            <label className="mb-1 block text-xs text-muted-foreground">Foto (opsional, maks {MAX_IMAGES} gambar, 5MB per gambar)</label>
+            <ImageUploader
+              images={newImages}
+              onAdd={(files) => validateAndAddImages(files, newImages, setNewImages)}
+              onRemove={(i) => {
+                URL.revokeObjectURL(newImages[i].url);
+                setNewImages(prev => prev.filter((_, idx) => idx !== i));
+              }}
+            />
+          </div>
           <Button onClick={handleSubmit} disabled={submitting || newRating === 0} className="rounded-full">
             {submitting ? 'Mengirim...' : 'Kirim Ulasan'}
           </Button>
@@ -316,19 +527,10 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
                   {!isEditing && <StarRating rating={review.rating} size="sm" />}
                   {isOwn && !isEditing && (
                     <div className="flex gap-1">
-                      <button
-                        onClick={() => handleEdit(review)}
-                        className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-                        title="Edit ulasan"
-                      >
+                      <button onClick={() => handleEdit(review)} className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground" title="Edit ulasan">
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(review.id)}
-                        disabled={deleting}
-                        className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                        title="Hapus ulasan"
-                      >
+                      <button onClick={() => handleDelete(review.id)} disabled={deleting} className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive" title="Hapus ulasan">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -352,6 +554,19 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
                       />
                       <span className="mt-1 block text-right text-xs text-muted-foreground">{editComment.length}/500</span>
                     </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">Foto (maks {MAX_IMAGES} gambar)</label>
+                      <ImageUploader
+                        images={editImages}
+                        onAdd={(files) => validateAndAddImages(files, editImages, setEditImages)}
+                        onRemove={(i) => {
+                          const img = editImages[i];
+                          if (img.id) setEditRemovedImageIds(prev => [...prev, img.id!]);
+                          if (img.file) URL.revokeObjectURL(img.url);
+                          setEditImages(prev => prev.filter((_, idx) => idx !== i));
+                        }}
+                      />
+                    </div>
                     <div className="flex gap-2">
                       <Button onClick={handleSaveEdit} disabled={submitting || editRating === 0} size="sm" className="rounded-full">
                         {submitting ? 'Menyimpan...' : 'Simpan'}
@@ -362,7 +577,10 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
                     </div>
                   </div>
                 ) : (
-                  review.comment && <p className="text-sm leading-relaxed text-muted-foreground">{review.comment}</p>
+                  <>
+                    {review.comment && <p className="text-sm leading-relaxed text-muted-foreground">{review.comment}</p>}
+                    <ReviewImageGallery images={review.images || []} />
+                  </>
                 )}
               </div>
             );
