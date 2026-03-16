@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Star, MessageSquare, User } from 'lucide-react';
+import { Star, MessageSquare, User, Pencil, Trash2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -65,6 +65,10 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [userReview, setUserReview] = useState<Review | null>(null);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const fetchReviews = useCallback(async () => {
     setLoading(true);
@@ -74,10 +78,7 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
       .eq('product_id', productId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      setLoading(false);
-      return;
-    }
+    if (error) { setLoading(false); return; }
 
     const reviewList = data || [];
     const userIds = [...new Set(reviewList.map(r => r.user_id))];
@@ -115,6 +116,15 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
     count: reviews.filter(r => r.rating === star).length,
   }));
 
+  const updateProductRating = async (updatedReviews: { rating: number }[]) => {
+    const count = updatedReviews.length;
+    const avg = count > 0 ? updatedReviews.reduce((s, r) => s + r.rating, 0) / count : 0;
+    await supabase.from('products').update({
+      rating: Math.round(avg * 10) / 10,
+      review_count: count,
+    }).eq('id', productId);
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       toast({ title: 'Login diperlukan', description: 'Silakan login terlebih dahulu untuk memberikan ulasan.', variant: 'destructive' });
@@ -144,18 +154,79 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
       return;
     }
 
-    // Update product rating/review_count
-    const newCount = reviews.length + 1;
-    const newAvg = (reviews.reduce((s, r) => s + r.rating, 0) + newRating) / newCount;
-    await supabase.from('products').update({
-      rating: Math.round(newAvg * 10) / 10,
-      review_count: newCount,
-    }).eq('id', productId);
+    const updatedReviews = [...reviews.map(r => ({ rating: r.rating })), { rating: newRating }];
+    await updateProductRating(updatedReviews);
 
     toast({ title: 'Ulasan terkirim', description: 'Terima kasih atas ulasan Anda!' });
     setNewRating(0);
     setNewComment('');
     setSubmitting(false);
+    fetchReviews();
+    onReviewAdded?.();
+  };
+
+  const handleEdit = (review: Review) => {
+    setEditingReview(review);
+    setEditRating(review.rating);
+    setEditComment(review.comment || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReview(null);
+    setEditRating(0);
+    setEditComment('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingReview || editRating === 0) return;
+    const trimmed = editComment.trim();
+    if (trimmed.length > 500) {
+      toast({ title: 'Komentar terlalu panjang', description: 'Maksimal 500 karakter.', variant: 'destructive' });
+      return;
+    }
+
+    setSubmitting(true);
+    const { error } = await supabase.from('reviews').update({
+      rating: editRating,
+      comment: trimmed || null,
+    }).eq('id', editingReview.id);
+
+    if (error) {
+      toast({ title: 'Gagal mengubah ulasan', description: error.message, variant: 'destructive' });
+      setSubmitting(false);
+      return;
+    }
+
+    const updatedReviews = reviews.map(r =>
+      r.id === editingReview.id ? { rating: editRating } : { rating: r.rating }
+    );
+    await updateProductRating(updatedReviews);
+
+    toast({ title: 'Ulasan diperbarui' });
+    handleCancelEdit();
+    setSubmitting(false);
+    fetchReviews();
+    onReviewAdded?.();
+  };
+
+  const handleDelete = async (reviewId: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus ulasan ini?')) return;
+
+    setDeleting(true);
+    const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+
+    if (error) {
+      toast({ title: 'Gagal menghapus ulasan', description: error.message, variant: 'destructive' });
+      setDeleting(false);
+      return;
+    }
+
+    const updatedReviews = reviews.filter(r => r.id !== reviewId).map(r => ({ rating: r.rating }));
+    await updateProductRating(updatedReviews);
+
+    toast({ title: 'Ulasan dihapus' });
+    setUserReview(null);
+    setDeleting(false);
     fetchReviews();
     onReviewAdded?.();
   };
@@ -208,12 +279,6 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
         </div>
       )}
 
-      {user && userReview && (
-        <div className="mb-8 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-muted-foreground">
-          Anda sudah memberikan ulasan untuk produk ini.
-        </div>
-      )}
-
       {!user && (
         <div className="mb-8 rounded-xl border border-border bg-secondary/30 p-4 text-center text-sm text-muted-foreground">
           <a href="/login" className="font-medium text-primary hover:underline">Login</a> untuk memberikan ulasan.
@@ -227,25 +292,81 @@ const ProductReviews = ({ productId, onReviewAdded }: ProductReviewsProps) => {
         <p className="py-8 text-center text-muted-foreground">Belum ada ulasan untuk produk ini.</p>
       ) : (
         <div className="space-y-4">
-          {reviews.map(review => (
-            <div key={review.id} className="rounded-xl border border-border bg-card p-4">
-              <div className="mb-2 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
-                  {review.profile?.avatar_url ? (
-                    <img src={review.profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
-                  ) : (
-                    <User className="h-4 w-4 text-muted-foreground" />
+          {reviews.map(review => {
+            const isOwn = user?.id === review.user_id;
+            const isEditing = editingReview?.id === review.id;
+
+            return (
+              <div key={review.id} className={`rounded-xl border bg-card p-4 ${isOwn ? 'border-primary/30' : 'border-border'}`}>
+                <div className="mb-2 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
+                    {review.profile?.avatar_url ? (
+                      <img src={review.profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                    ) : (
+                      <User className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {review.profile?.full_name || 'Pengguna'}
+                      {isOwn && <span className="ml-2 text-xs text-primary">(Anda)</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{formatDate(review.created_at)}</p>
+                  </div>
+                  {!isEditing && <StarRating rating={review.rating} size="sm" />}
+                  {isOwn && !isEditing && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(review)}
+                        className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                        title="Edit ulasan"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(review.id)}
+                        disabled={deleting}
+                        className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                        title="Hapus ulasan"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{review.profile?.full_name || 'Pengguna'}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(review.created_at)}</p>
-                </div>
-                <StarRating rating={review.rating} size="sm" />
+
+                {isEditing ? (
+                  <div className="mt-2 space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">Rating</label>
+                      <StarRating rating={editRating} onChange={setEditRating} />
+                    </div>
+                    <div>
+                      <Textarea
+                        value={editComment}
+                        onChange={e => setEditComment(e.target.value)}
+                        placeholder="Bagikan pengalaman Anda..."
+                        maxLength={500}
+                        className="resize-none"
+                        rows={3}
+                      />
+                      <span className="mt-1 block text-right text-xs text-muted-foreground">{editComment.length}/500</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleSaveEdit} disabled={submitting || editRating === 0} size="sm" className="rounded-full">
+                        {submitting ? 'Menyimpan...' : 'Simpan'}
+                      </Button>
+                      <Button onClick={handleCancelEdit} variant="outline" size="sm" className="rounded-full">
+                        <X className="mr-1 h-3 w-3" /> Batal
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  review.comment && <p className="text-sm leading-relaxed text-muted-foreground">{review.comment}</p>
+                )}
               </div>
-              {review.comment && <p className="text-sm leading-relaxed text-muted-foreground">{review.comment}</p>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
