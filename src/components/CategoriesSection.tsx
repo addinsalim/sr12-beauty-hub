@@ -33,32 +33,32 @@ const CategoriesSection = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24">
+    <section className="py-20 md:py-28">
       <div className="container mx-auto px-4">
-        <div className="mb-10 text-center">
-          <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl">
+        <div className="mb-14 text-center">
+          <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl accent-line-center">
             {t.categories.title}
           </h2>
-          <p className="mt-2 text-muted-foreground">{t.categories.subtitle}</p>
+          <p className="mt-4 text-muted-foreground">{t.categories.subtitle}</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-3">
           {categories.map((cat, i) => (
             <Link
               key={cat.name}
               to={cat.href}
-              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-elegant opacity-0 animate-fade-in"
+              className="group glow-ring relative overflow-hidden rounded-3xl glass border-border/30 p-8 shadow-card transition-all duration-500 hover:-translate-y-2 hover:shadow-glow-lg opacity-0 animate-slide-up"
               style={{ animationDelay: `${i * 0.15}s` }}
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} opacity-40 transition-opacity group-hover:opacity-60`} />
+              <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} opacity-40 transition-opacity duration-500 group-hover:opacity-70`} />
               <div className="relative flex flex-col items-center text-center">
-                <div className="mb-4 h-40 w-40 overflow-hidden rounded-full bg-secondary/50 p-4">
-                  <img src={cat.image} alt={cat.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                <div className="mb-6 h-44 w-44 overflow-hidden rounded-full bg-secondary/30 p-4 ring-2 ring-border/30 transition-all duration-500 group-hover:ring-primary/30 group-hover:shadow-glow">
+                  <img src={cat.image} alt={cat.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-115" />
                 </div>
-                <h3 className="mb-1 font-display text-xl font-bold text-card-foreground">{cat.name}</h3>
-                <p className="mb-4 text-sm text-muted-foreground">{cat.description}</p>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary transition group-hover:gap-2">
-                  Lihat Produk <ArrowRight className="h-4 w-4" />
+                <h3 className="mb-2 font-display text-xl font-bold text-card-foreground">{cat.name}</h3>
+                <p className="mb-5 text-sm text-muted-foreground leading-relaxed">{cat.description}</p>
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-all duration-300 group-hover:gap-3">
+                  Lihat Produk <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </span>
               </div>
             </Link>

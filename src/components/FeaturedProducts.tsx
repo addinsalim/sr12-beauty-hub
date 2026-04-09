@@ -9,35 +9,38 @@ const FeaturedProducts = () => {
   const featured = mockProducts.slice(0, 4);
 
   return (
-    <section className="bg-secondary/30 py-16 md:py-24">
-      <div className="container mx-auto px-4">
-        <div className="mb-10 flex items-end justify-between">
+    <section className="relative py-20 md:py-28">
+      {/* Subtle glass background */}
+      <div className="absolute inset-0 bg-secondary/20 backdrop-blur-sm" />
+
+      <div className="container relative mx-auto px-4">
+        <div className="mb-12 flex items-end justify-between">
           <div>
-            <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl">
+            <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl accent-line">
               {t.products.title}
             </h2>
-            <p className="mt-2 text-muted-foreground">{t.products.subtitle}</p>
+            <p className="mt-4 text-muted-foreground">{t.products.subtitle}</p>
           </div>
           <Link
             to="/products"
-            className="hidden items-center gap-1 text-sm font-medium text-primary transition hover:gap-2 md:flex"
+            className="hidden items-center gap-1.5 text-sm font-medium text-primary transition-all duration-300 hover:gap-3 underline-grow md:flex"
           >
-            {t.products.viewAll} <ArrowRight className="h-4 w-4" />
+            {t.products.viewAll} <ArrowRight className="h-4 w-4 transition-transform hover:translate-x-0.5" />
           </Link>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {featured.map((product, i) => (
-            <div key={product.id} className="opacity-0 animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
+            <div key={product.id} className="opacity-0 animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
               <ProductCard product={product} />
             </div>
           ))}
         </div>
 
-        <div className="mt-8 text-center md:hidden">
+        <div className="mt-10 text-center md:hidden">
           <Link
             to="/products"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"
+            className="shimmer inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:shadow-glow-lg hover:scale-105"
           >
             {t.products.viewAll} <ArrowRight className="h-4 w-4" />
           </Link>
