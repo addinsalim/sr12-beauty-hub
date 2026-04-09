@@ -1,13 +1,42 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 const Login = () => {
   const { t } = useI18n();
+  const { signIn, user, isAdmin, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (isAdmin) navigate('/admin', { replace: true });
+      else navigate('/', { replace: true });
+    }
+  }, [user, isAdmin, authLoading, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await signIn(email, password);
+    setLoading(false);
+    if (error) {
+      toast({ title: 'Login gagal', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Login berhasil!' });
+    }
+  };
+
+  if (authLoading) return null;
+  if (user) return null;
 
   return (
     <div className="relative flex min-h-[80vh] items-center justify-center bg-background px-4 py-12 overflow-hidden">
@@ -18,14 +47,11 @@ const Login = () => {
       <div className="w-full max-w-md relative">
         <div className="mb-8 text-center opacity-0 animate-blur-in">
           <h1 className="font-display text-3xl font-bold text-foreground">{t.auth.login}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Selamat datang kembali di SR12 Store
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Selamat datang kembali di SR12 Store</p>
         </div>
 
         <div className="rounded-3xl glass-strong p-8 shadow-glow opacity-0 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <form className="space-y-5" onSubmit={e => e.preventDefault()}>
-            {/* Email */}
+          <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">{t.auth.email}</label>
               <div className="flex items-center rounded-xl glass px-4 transition-all duration-300 focus-within:shadow-glow focus-within:ring-1 focus-within:ring-primary/30">
@@ -36,11 +62,11 @@ const Login = () => {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="email@contoh.com"
                   className="flex-1 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground"
+                  required
                 />
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">{t.auth.password}</label>
               <div className="flex items-center rounded-xl glass px-4 transition-all duration-300 focus-within:shadow-glow focus-within:ring-1 focus-within:ring-primary/30">
@@ -51,6 +77,7 @@ const Login = () => {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="flex-1 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground"
+                  required
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground transition-colors hover:text-foreground">
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -68,9 +95,10 @@ const Login = () => {
 
             <button
               type="submit"
-              className="shimmer w-full rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:scale-[1.02]"
+              disabled={loading}
+              className="shimmer w-full rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:scale-[1.02] disabled:opacity-50"
             >
-              {t.auth.login}
+              {loading ? 'Memproses...' : t.auth.login}
             </button>
           </form>
 
