@@ -129,9 +129,11 @@ const Navbar = () => {
               className="relative rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110"
             >
               <ShoppingBag className="h-5 w-5" />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground animate-pulse-glow">
-                {totalItems}
-              </span>
+              {totalItems > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground animate-pulse-glow">
+                  {totalItems}
+                </span>
+              )}
             </Link>
 
             {/* Mobile menu toggle */}

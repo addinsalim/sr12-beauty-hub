@@ -40,7 +40,7 @@ const PAYMENT_METHODS = [
   ]},
 ];
 
-const SHIPPING_COST = 15000; // Flat rate for now
+const SHIPPING_COST = 20000; // Flat Rp20.000 — free above Rp200.000 (consistent with Cart page)
 
 const Checkout = () => {
   const { user, loading: authLoading } = useAuth();

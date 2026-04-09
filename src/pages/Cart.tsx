@@ -10,8 +10,10 @@ const Cart = () => {
     const { t } = useI18n();
     const navigate = useNavigate();
 
-    // Determine shipping price rule
-    const shipping = totalPrice > 200000 ? 0 : 20000;
+    // Determine shipping price rule (free above Rp200.000, consistent with Cart)
+    const SHIPPING_THRESHOLD = 200000;
+    const SHIPPING_COST = 20000;
+    const shipping = totalPrice >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
     const finalTotal = totalPrice + shipping;
 
     if (items.length === 0) {
@@ -124,8 +126,8 @@ const Cart = () => {
                                     <span>Biaya Pengiriman <br/><span className="text-[10px]">*Estimasi</span></span>
                                     <span className="text-right">{shipping === 0 ? 'Gratis' : formatPrice(shipping)}</span>
                                 </div>
-                                {shipping > 0 && (
-                                    <p className="text-[10px] text-accent font-medium mt-1">✨ Tambah Rp{formatPrice(200000 - totalPrice)} lagi untuk Free Ongkir!</p>
+                                {shipping > 0 && totalPrice < SHIPPING_THRESHOLD && (
+                                    <p className="text-[10px] text-accent font-medium mt-1">✨ Tambah {formatPrice(SHIPPING_THRESHOLD - totalPrice)} lagi untuk Free Ongkir!</p>
                                 )}
                             </div>
 
