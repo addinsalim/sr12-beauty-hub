@@ -24,23 +24,6 @@ interface Address {
   is_default: boolean;
 }
 
-const PAYMENT_METHODS = [
-  {
-    id: 'midtrans',
-    label: 'Bayar Online',
-    description: 'Transfer Bank, Kartu Kredit, GoPay, OVO, DANA, QRIS & lainnya',
-    icon: <Wallet className="h-5 w-5" />,
-    badges: ['QRIS', 'GoPay', 'VA Bank', 'Kartu'],
-  },
-  {
-    id: 'cod',
-    label: 'COD (Bayar di Tempat)',
-    description: 'Bayar tunai saat paket tiba',
-    icon: <span className="text-xl">💵</span>,
-    badges: [],
-  },
-];
-
 const SHIPPING_COST = 20000;
 
 const Checkout = () => {
