@@ -9,16 +9,20 @@ interface OrderItem {
   product_id: string
   variant_id?: string | null
   quantity: number
-  price: number
 }
 
 interface CreateOrderRequest {
   items: OrderItem[]
   address_id: string
-  shipping_cost: number
   payment_method: string // 'cod' | 'transfer_bank' | 'ewallet'
-  payment_detail?: string // bank name or ewallet name
+  payment_detail?: string
   notes?: string
+}
+
+// Server-side shipping rule (ignore client-supplied value)
+function calculateShipping(subtotal: number): number {
+  if (subtotal >= 200000) return 0
+  return 20000
 }
 
 Deno.serve(async (req) => {
@@ -29,8 +33,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    // Auth check
+
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -51,57 +54,108 @@ Deno.serve(async (req) => {
     console.log('create-order called, user:', user.id)
 
     const body: CreateOrderRequest = await req.json()
-    const { items, address_id, shipping_cost, payment_method, payment_detail, notes } = body
+    const { items, address_id, payment_method, payment_detail, notes } = body
 
-    // Validate input
     if (!items?.length) throw new Error('Keranjang kosong')
     if (!address_id) throw new Error('Alamat pengiriman harus dipilih')
     if (!payment_method) throw new Error('Metode pembayaran harus dipilih')
 
+    // Validate quantities
+    for (const i of items) {
+      if (!i.product_id || !Number.isInteger(i.quantity) || i.quantity <= 0 || i.quantity > 1000) {
+        throw new Error('Jumlah item tidak valid')
+      }
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Validate stock
+    // Determine if user is reseller (for pricing tier)
+    const { data: resellerRoleRows } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'reseller')
+    const isReseller = !!resellerRoleRows && resellerRoleRows.length > 0
+
+    // Validate stock + fetch SERVER-side prices (never trust client)
+    type Resolved = { product_id: string; variant_id: string | null; quantity: number; unit_price: number }
+    const resolved: Resolved[] = []
+
     for (const item of items) {
       if (item.variant_id) {
         const { data: variant, error } = await supabase
           .from('variants')
-          .select('id, stock, name')
+          .select('id, stock, name, price, product_id')
           .eq('id', item.variant_id)
           .single()
-
-        if (error || !variant) throw new Error(`Varian produk tidak ditemukan`)
+        if (error || !variant) throw new Error('Varian produk tidak ditemukan')
+        if (variant.product_id !== item.product_id) throw new Error('Varian tidak cocok dengan produk')
         if (variant.stock < item.quantity) {
           throw new Error(`Stok ${variant.name} tidak mencukupi (tersisa ${variant.stock})`)
         }
+
+        // For reseller pricing fall back to product if variant has no special price
+        let unitPrice = Number(variant.price) || 0
+        if (isReseller || unitPrice === 0) {
+          const { data: product } = await supabase
+            .from('products')
+            .select('price, reseller_price, discount')
+            .eq('id', item.product_id)
+            .single()
+          if (product) {
+            const base = isReseller && product.reseller_price > 0
+              ? Number(product.reseller_price)
+              : (unitPrice > 0 ? unitPrice : Number(product.price))
+            const discount = Number(product.discount) || 0
+            unitPrice = Math.round(base * (1 - discount / 100))
+          }
+        }
+
+        resolved.push({
+          product_id: item.product_id,
+          variant_id: item.variant_id,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+        })
       } else {
         const { data: product, error } = await supabase
           .from('products')
-          .select('id, stock, name')
+          .select('id, stock, name, price, reseller_price, discount')
           .eq('id', item.product_id)
           .single()
-
-        if (error || !product) throw new Error(`Produk tidak ditemukan`)
+        if (error || !product) throw new Error('Produk tidak ditemukan')
         if (product.stock < item.quantity) {
           throw new Error(`Stok ${product.name} tidak mencukupi (tersisa ${product.stock})`)
         }
+        const base = isReseller && product.reseller_price > 0
+          ? Number(product.reseller_price)
+          : Number(product.price)
+        const discount = Number(product.discount) || 0
+        const unitPrice = Math.round(base * (1 - discount / 100))
+
+        resolved.push({
+          product_id: item.product_id,
+          variant_id: null,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+        })
       }
     }
 
-    // Calculate totals
-    const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
-    const total = subtotal + (shipping_cost || 0)
+    // Server-side totals
+    const subtotal = resolved.reduce((s, i) => s + i.unit_price * i.quantity, 0)
+    const shipping_cost = calculateShipping(subtotal)
+    const total = subtotal + shipping_cost
 
-    // Determine initial status
     const status = payment_method === 'cod' ? 'processing' : 'pending_payment'
 
-    // Create order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         user_id: user.id,
         address_id,
         subtotal,
-        shipping_cost: shipping_cost || 0,
+        shipping_cost,
         total,
         status,
         notes: notes || null,
@@ -111,21 +165,19 @@ Deno.serve(async (req) => {
 
     if (orderError) throw new Error(`Gagal membuat pesanan: ${orderError.message}`)
 
-    // Create order items
-    const orderItems = items.map(i => ({
+    const orderItems = resolved.map(i => ({
       order_id: order.id,
       product_id: i.product_id,
       variant_id: i.variant_id,
       quantity: i.quantity,
-      price: i.price,
-      total: i.price * i.quantity,
+      price: i.unit_price,
+      total: i.unit_price * i.quantity,
     }))
 
     const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
     if (itemsError) throw new Error(`Gagal menyimpan item pesanan: ${itemsError.message}`)
 
-    // Reduce stock
-    for (const item of items) {
+    for (const item of resolved) {
       if (item.variant_id) {
         const { error: stockError } = await supabase.rpc('reduce_variant_stock', {
           p_variant_id: item.variant_id,
@@ -147,7 +199,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create payment record
     const { error: paymentError } = await supabase.from('payments').insert({
       order_id: order.id,
       amount: total,
@@ -157,7 +208,6 @@ Deno.serve(async (req) => {
     })
     if (paymentError) throw new Error(`Gagal membuat pembayaran: ${paymentError.message}`)
 
-    // Create notification
     await supabase.from('notifications').insert({
       user_id: user.id,
       title: 'Pesanan Dibuat',
@@ -165,13 +215,15 @@ Deno.serve(async (req) => {
       type: 'order',
     })
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       order: {
         id: order.id,
         order_number: order.order_number,
         status: order.status,
         total: order.total,
+        subtotal,
+        shipping_cost,
       }
     }), {
       status: 200,

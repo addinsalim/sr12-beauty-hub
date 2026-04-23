@@ -484,6 +484,13 @@ export type Database = {
             referencedRelation: "reviews"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "review_images_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       reviews: {
@@ -704,6 +711,33 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews_public: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string | null
+          product_id: string | null
+          rating: number | null
+          reviewer_avatar: string | null
+          reviewer_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
             referencedColumns: ["id"]
           },
         ]
