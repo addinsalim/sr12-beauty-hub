@@ -48,6 +48,8 @@ Deno.serve(async (req) => {
       })
     }
 
+    console.log('create-order called, user:', user.id)
+
     const body: CreateOrderRequest = await req.json()
     const { items, address_id, shipping_cost, payment_method, payment_detail, notes } = body
 
@@ -177,6 +179,7 @@ Deno.serve(async (req) => {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Terjadi kesalahan'
+    console.error('create-order error:', message)
     return new Response(JSON.stringify({ error: message }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
