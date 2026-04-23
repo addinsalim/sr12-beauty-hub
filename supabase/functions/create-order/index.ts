@@ -7,7 +7,7 @@ const corsHeaders = {
 
 interface OrderItem {
   product_id: string
-  variant_id: string
+  variant_id?: string | null
   quantity: number
   price: number
 }
@@ -60,15 +60,28 @@ Deno.serve(async (req) => {
 
     // Validate stock
     for (const item of items) {
-      const { data: variant, error } = await supabase
-        .from('variants')
-        .select('id, stock, name')
-        .eq('id', item.variant_id)
-        .single()
-      
-      if (error || !variant) throw new Error(`Varian produk tidak ditemukan`)
-      if (variant.stock < item.quantity) {
-        throw new Error(`Stok ${variant.name} tidak mencukupi (tersisa ${variant.stock})`)
+      if (item.variant_id) {
+        const { data: variant, error } = await supabase
+          .from('variants')
+          .select('id, stock, name')
+          .eq('id', item.variant_id)
+          .single()
+
+        if (error || !variant) throw new Error(`Varian produk tidak ditemukan`)
+        if (variant.stock < item.quantity) {
+          throw new Error(`Stok ${variant.name} tidak mencukupi (tersisa ${variant.stock})`)
+        }
+      } else {
+        const { data: product, error } = await supabase
+          .from('products')
+          .select('id, stock, name')
+          .eq('id', item.product_id)
+          .single()
+
+        if (error || !product) throw new Error(`Produk tidak ditemukan`)
+        if (product.stock < item.quantity) {
+          throw new Error(`Stok ${product.name} tidak mencukupi (tersisa ${product.stock})`)
+        }
       }
     }
 
@@ -111,11 +124,25 @@ Deno.serve(async (req) => {
 
     // Reduce stock
     for (const item of items) {
-      const { error: stockError } = await supabase.rpc('reduce_variant_stock', {
-        p_variant_id: item.variant_id,
-        p_quantity: item.quantity,
-      })
-      if (stockError) throw new Error(`Gagal mengurangi stok: ${stockError.message}`)
+      if (item.variant_id) {
+        const { error: stockError } = await supabase.rpc('reduce_variant_stock', {
+          p_variant_id: item.variant_id,
+          p_quantity: item.quantity,
+        })
+        if (stockError) throw new Error(`Gagal mengurangi stok: ${stockError.message}`)
+      } else {
+        const { data: product, error: fetchError } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', item.product_id)
+          .single()
+        if (fetchError || !product) throw new Error(`Gagal mengambil stok produk`)
+        const { error: stockError } = await supabase
+          .from('products')
+          .update({ stock: product.stock - item.quantity })
+          .eq('id', item.product_id)
+        if (stockError) throw new Error(`Gagal mengurangi stok: ${stockError.message}`)
+      }
     }
 
     // Create payment record
