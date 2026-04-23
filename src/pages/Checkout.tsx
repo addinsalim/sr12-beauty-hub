@@ -131,18 +131,19 @@ const Checkout = () => {
       }
 
       window.snap.pay(snap_token, {
-        onSuccess: (result) => {
+        onSuccess: () => {
           if (!buyNowItem) clearCart();
           toast({ title: '✅ Pembayaran berhasil!', description: 'Pesanan Anda sedang diproses.' });
-          navigate(`/orders/${orderId}`, { replace: true });
+          setTimeout(() => navigate('/my-orders', { replace: true }), 1500);
         },
-        onPending: (result) => {
+        onPending: () => {
           if (!buyNowItem) clearCart();
-          toast({ title: '⏳ Menunggu pembayaran', description: 'Selesaikan pembayaran sebelum batas waktu.' });
+          toast({ title: '⏳ Menunggu pembayaran', description: 'Selesaikan pembayaran di halaman pesanan.' });
           navigate(`/orders/${orderId}`, { replace: true });
         },
-        onError: (result) => {
-          toast({ title: 'Pembayaran gagal', description: 'Silakan coba lagi.', variant: 'destructive' });
+        onError: () => {
+          toast({ title: 'Pembayaran gagal', description: 'Silakan coba lagi dari halaman pesanan.', variant: 'destructive' });
+          navigate(`/orders/${orderId}`, { replace: true });
         },
         onClose: () => {
           if (!buyNowItem) clearCart();

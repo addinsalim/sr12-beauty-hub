@@ -87,12 +87,14 @@ const OrderDetail = () => {
       }
       window.snap.pay(snap_token, {
         onSuccess: () => {
-          toast({ title: '✅ Pembayaran berhasil!' });
+          toast({ title: '✅ Pembayaran berhasil!', description: 'Mengarahkan ke daftar pesanan...' });
           setOrder((prev: any) => ({ ...prev, status: 'processing' }));
           setPayment((prev: any) => ({ ...prev, status: 'confirmed' }));
+          setTimeout(() => navigate('/my-orders', { replace: true }), 1500);
         },
         onPending: () => {
-          toast({ title: '⏳ Menunggu pembayaran', description: 'Selesaikan pembayaran sebelum batas waktu.' });
+          toast({ title: '⏳ Menunggu pembayaran', description: 'Cek status di Pesanan Saya.' });
+          setTimeout(() => navigate('/my-orders', { replace: true }), 1500);
         },
         onError: () => {
           toast({ title: 'Pembayaran gagal', description: 'Silakan coba lagi.', variant: 'destructive' });
