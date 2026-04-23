@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -90,7 +90,7 @@ const Login = () => {
                 <input type="checkbox" className="rounded border-border accent-primary" />
                 Ingat saya
               </label>
-              <a href="#" className="text-sm text-primary transition-colors hover:text-primary/80">{t.auth.forgotPassword}</a>
+              <Link to="/forgot-password" className="text-sm text-primary transition-colors hover:text-primary/80">{t.auth.forgotPassword}</Link>
             </div>
 
             <button

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut } from 'lucide-react';
+import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -114,6 +114,9 @@ const Navbar = () => {
                 <div className="flex items-center bg-secondary/50 rounded-full px-3 py-1 border border-border">
                   <span className="text-sm font-medium truncate max-w-[100px] text-foreground">{profile?.full_name || user.email?.split('@')[0]}</span>
                 </div>
+                <Link to="/change-password" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110" title="Ganti Password">
+                  <KeyRound className="h-5 w-5" />
+                </Link>
                 <button onClick={signOut} className="rounded-full p-2 text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 hover:scale-110">
                   <LogOut className="h-5 w-5" />
                 </button>
@@ -210,6 +213,9 @@ const Navbar = () => {
                   )}
                   <Link to="/my-orders" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
                     <Package className="h-5 w-5 text-primary" /> Pesanan Saya
+                  </Link>
+                  <Link to="/change-password" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <KeyRound className="h-5 w-5 text-primary" /> Ganti Password
                   </Link>
                   <button onClick={() => { signOut(); setIsOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-destructive hover:bg-red-500/10">
                     <LogOut className="h-5 w-5 text-destructive" /> Keluar

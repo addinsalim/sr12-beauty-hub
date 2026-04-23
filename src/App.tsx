@@ -26,6 +26,9 @@ import AdminPayments from "./pages/admin/AdminPayments";
 import AdminShipments from "./pages/admin/AdminShipments";
 import AdminReports from "./pages/admin/AdminReports";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import ChangePassword from "./pages/ChangePassword";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +53,9 @@ const App = () => (
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/my-orders" element={<MyOrders />} />
                   <Route path="/orders/:id" element={<OrderDetail />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/change-password" element={<ChangePassword />} />
                 </Route>
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
