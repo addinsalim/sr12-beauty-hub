@@ -44,7 +44,7 @@ const Checkout = () => {
     full_address: '', city: '', province: '', postal_code: '', district: '',
   });
 
-  const [paymentMethod, setPaymentMethod] = useState('midtrans');
+  const paymentMethod = 'midtrans';
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
