@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { MapPin, Truck, CreditCard, Plus, ArrowLeft, Package, Loader2, ShieldCheck, Wallet, QrCode } from 'lucide-react';
+import { MapPin, Truck, Plus, ArrowLeft, Package, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart, CartItem } from '@/hooks/useCart';
 import { formatPrice } from '@/lib/supabaseHelpers';
@@ -24,23 +24,6 @@ interface Address {
   is_default: boolean;
 }
 
-const PAYMENT_METHODS = [
-  {
-    id: 'midtrans',
-    label: 'Bayar Online',
-    description: 'Transfer Bank, Kartu Kredit, GoPay, OVO, DANA, QRIS & lainnya',
-    icon: <Wallet className="h-5 w-5" />,
-    badges: ['QRIS', 'GoPay', 'VA Bank', 'Kartu'],
-  },
-  {
-    id: 'cod',
-    label: 'COD (Bayar di Tempat)',
-    description: 'Bayar tunai saat paket tiba',
-    icon: <span className="text-xl">💵</span>,
-    badges: [],
-  },
-];
-
 const SHIPPING_COST = 20000;
 
 const Checkout = () => {
@@ -61,7 +44,7 @@ const Checkout = () => {
     full_address: '', city: '', province: '', postal_code: '', district: '',
   });
 
-  const [paymentMethod, setPaymentMethod] = useState('midtrans');
+  const paymentMethod = 'midtrans';
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -334,52 +317,12 @@ const Checkout = () => {
               )}
             </section>
 
-            {/* 4. Payment Method */}
+            {/* 4. Payment Info (Midtrans only) */}
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
-              <h2 className="flex items-center gap-2 font-display text-base font-bold text-card-foreground mb-3">
-                <CreditCard className="h-5 w-5 text-primary" /> Metode Pembayaran
-              </h2>
-              <div className="space-y-3">
-                {PAYMENT_METHODS.map(pm => (
-                  <label
-                    key={pm.id}
-                    className={`flex cursor-pointer gap-3 rounded-xl border-2 p-4 transition-all duration-200 ${paymentMethod === pm.id
-                      ? 'border-primary bg-primary/5 shadow-sm'
-                      : 'border-border hover:border-primary/40'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      className="mt-1 accent-primary"
-                      checked={paymentMethod === pm.id}
-                      onChange={() => setPaymentMethod(pm.id)}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        {pm.icon}
-                        <span className="text-sm font-semibold text-card-foreground">{pm.label}</span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{pm.description}</p>
-                      {pm.badges.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {pm.badges.map(b => (
-                            <span key={b} className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{b}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                ))}
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/30 px-3 py-2 text-xs text-green-700 dark:text-green-400">
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span>Pembayaran aman & terenkripsi oleh <strong>Midtrans</strong> — mendukung Transfer Bank, Kartu Kredit, GoPay, OVO, DANA, QRIS & lainnya</span>
               </div>
-
-              {/* Midtrans Security Badge */}
-              {paymentMethod === 'midtrans' && (
-                <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/30 px-3 py-2 text-xs text-green-700 dark:text-green-400">
-                  <ShieldCheck className="h-4 w-4 shrink-0" />
-                  <span>Pembayaran aman & terenkripsi oleh <strong>Midtrans</strong> — mitra resmi Bank Indonesia</span>
-                </div>
-              )}
             </section>
 
             {/* 5. Notes */}
