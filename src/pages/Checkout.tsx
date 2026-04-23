@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { MapPin, Truck, CreditCard, ChevronRight, Plus, ArrowLeft, Package, AlertCircle, Loader2 } from 'lucide-react';
+import { MapPin, Truck, CreditCard, Plus, ArrowLeft, Package, Loader2, ShieldCheck, Wallet, QrCode } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart, CartItem } from '@/hooks/useCart';
 import { formatPrice } from '@/lib/supabaseHelpers';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import '@/types/midtrans.d.ts';
 
 interface Address {
   id: string;
@@ -24,23 +25,23 @@ interface Address {
 }
 
 const PAYMENT_METHODS = [
-  { id: 'cod', label: 'COD (Bayar di Tempat)', icon: '💵' },
-  { id: 'transfer_bank', label: 'Transfer Bank', icon: '🏦', options: [
-    { id: 'BCA', label: 'BCA' },
-    { id: 'BRI', label: 'BRI' },
-    { id: 'Mandiri', label: 'Mandiri' },
-    { id: 'BNI', label: 'BNI' },
-    { id: 'BSI', label: 'BSI' },
-  ]},
-  { id: 'ewallet', label: 'E-Wallet', icon: '📱', options: [
-    { id: 'Dana', label: 'Dana' },
-    { id: 'OVO', label: 'OVO' },
-    { id: 'Gopay', label: 'Gopay' },
-    { id: 'QRIS', label: 'QRIS' },
-  ]},
+  {
+    id: 'midtrans',
+    label: 'Bayar Online',
+    description: 'Transfer Bank, Kartu Kredit, GoPay, OVO, DANA, QRIS & lainnya',
+    icon: <Wallet className="h-5 w-5" />,
+    badges: ['QRIS', 'GoPay', 'VA Bank', 'Kartu'],
+  },
+  {
+    id: 'cod',
+    label: 'COD (Bayar di Tempat)',
+    description: 'Bayar tunai saat paket tiba',
+    icon: <span className="text-xl">💵</span>,
+    badges: [],
+  },
 ];
 
-const SHIPPING_COST = 20000; // Flat Rp20.000 — free above Rp200.000 (consistent with Cart page)
+const SHIPPING_COST = 20000;
 
 const Checkout = () => {
   const { user, loading: authLoading } = useAuth();
@@ -49,34 +50,48 @@ const Checkout = () => {
   const location = useLocation();
   const { toast } = useToast();
 
-  // Buy Now: single item passed via state
   const buyNowItem = location.state?.buyNowItem as CartItem | undefined;
   const checkoutItems = buyNowItem ? [buyNowItem] : cartItems;
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState({ label: 'Rumah', recipient_name: '', phone: '', full_address: '', city: '', province: '', postal_code: '', district: '' });
+  const [newAddress, setNewAddress] = useState({
+    label: 'Rumah', recipient_name: '', phone: '',
+    full_address: '', city: '', province: '', postal_code: '', district: '',
+  });
 
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [paymentDetail, setPaymentDetail] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('midtrans');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const snapScriptLoaded = useRef(false);
+
+  // Load Midtrans Snap.js
+  useEffect(() => {
+    if (snapScriptLoaded.current) return;
+    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
+    const snapUrl = import.meta.env.VITE_MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js';
+    const script = document.createElement('script');
+    script.src = snapUrl;
+    script.setAttribute('data-client-key', clientKey);
+    script.async = true;
+    document.head.appendChild(script);
+    snapScriptLoaded.current = true;
+    return () => { /* script stays loaded */ };
+  }, []);
 
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
-      toast({ title: 'Login diperlukan', description: 'Silakan login terlebih dahulu untuk checkout.', variant: 'destructive' });
+      toast({ title: 'Login diperlukan', description: 'Silakan login terlebih dahulu.', variant: 'destructive' });
       navigate('/login', { state: { from: '/checkout' } });
     }
   }, [user, authLoading, navigate, toast]);
 
   // Redirect if no items
   useEffect(() => {
-    if (!authLoading && user && checkoutItems.length === 0) {
-      navigate('/cart');
-    }
+    if (!authLoading && user && checkoutItems.length === 0) navigate('/cart');
   }, [checkoutItems.length, authLoading, user, navigate]);
 
   // Fetch addresses
@@ -95,23 +110,19 @@ const Checkout = () => {
   }, [user]);
 
   const subtotal = checkoutItems.reduce((s, i) => s + i.price * i.quantity, 0);
-  const total = subtotal + SHIPPING_COST;
+  const shippingFee = subtotal >= 200000 ? 0 : SHIPPING_COST;
+  const total = subtotal + shippingFee;
 
   const handleAddAddress = async () => {
     if (!user) return;
     if (!newAddress.recipient_name || !newAddress.phone || !newAddress.full_address || !newAddress.city || !newAddress.province) {
-      toast({ title: 'Data tidak lengkap', description: 'Harap isi semua field alamat yang wajib.', variant: 'destructive' });
+      toast({ title: 'Data tidak lengkap', description: 'Isi semua field wajib.', variant: 'destructive' });
       return;
     }
     const { data, error } = await supabase.from('addresses').insert({
-      ...newAddress,
-      user_id: user.id,
-      is_default: addresses.length === 0,
+      ...newAddress, user_id: user.id, is_default: addresses.length === 0,
     }).select().single();
-    if (error) {
-      toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
-      return;
-    }
+    if (error) { toast({ title: 'Gagal', description: error.message, variant: 'destructive' }); return; }
     const addr = data as Address;
     setAddresses(prev => [...prev, addr]);
     setSelectedAddressId(addr.id);
@@ -120,25 +131,56 @@ const Checkout = () => {
     toast({ title: 'Alamat ditambahkan' });
   };
 
+  const openSnapPayment = async (orderId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('create-payment', {
+        body: { order_id: orderId },
+      });
+
+      if (res.error) throw new Error(res.error.message);
+      const { snap_token } = res.data;
+      if (!snap_token) throw new Error('Gagal mendapatkan token pembayaran');
+
+      if (!window.snap) {
+        toast({ title: 'Snap belum siap', description: 'Coba lagi dalam beberapa detik.', variant: 'destructive' });
+        return;
+      }
+
+      window.snap.pay(snap_token, {
+        onSuccess: (result) => {
+          if (!buyNowItem) clearCart();
+          toast({ title: '✅ Pembayaran berhasil!', description: 'Pesanan Anda sedang diproses.' });
+          navigate(`/orders/${orderId}`, { replace: true });
+        },
+        onPending: (result) => {
+          if (!buyNowItem) clearCart();
+          toast({ title: '⏳ Menunggu pembayaran', description: 'Selesaikan pembayaran sebelum batas waktu.' });
+          navigate(`/orders/${orderId}`, { replace: true });
+        },
+        onError: (result) => {
+          toast({ title: 'Pembayaran gagal', description: 'Silakan coba lagi.', variant: 'destructive' });
+        },
+        onClose: () => {
+          if (!buyNowItem) clearCart();
+          toast({ title: 'Pesanan tersimpan', description: 'Selesaikan pembayaran di halaman pesanan Anda.' });
+          navigate(`/orders/${orderId}`, { replace: true });
+        },
+      });
+    } catch (err: any) {
+      toast({ title: 'Gagal membuka pembayaran', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedAddressId) {
       toast({ title: 'Pilih alamat', description: 'Harap pilih alamat pengiriman.', variant: 'destructive' });
       return;
     }
-    if (!paymentMethod) {
-      toast({ title: 'Pilih pembayaran', description: 'Harap pilih metode pembayaran.', variant: 'destructive' });
-      return;
-    }
-    if ((paymentMethod === 'transfer_bank' || paymentMethod === 'ewallet') && !paymentDetail) {
-      toast({ title: 'Pilih detail pembayaran', description: 'Harap pilih bank atau e-wallet.', variant: 'destructive' });
-      return;
-    }
 
     setSubmitting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Sesi tidak valid');
-
+      // Langkah 1: Buat order
       const res = await supabase.functions.invoke('create-order', {
         body: {
           items: checkoutItems.map(i => ({
@@ -148,25 +190,30 @@ const Checkout = () => {
             price: i.price,
           })),
           address_id: selectedAddressId,
-          shipping_cost: SHIPPING_COST,
+          shipping_cost: shippingFee,
           payment_method: paymentMethod,
-          payment_detail: paymentDetail || undefined,
           notes: notes || undefined,
         },
       });
 
       if (res.error) throw new Error(res.error.message || 'Gagal membuat pesanan');
       const result = res.data;
-      if (result.error) throw new Error(result.error);
+      if (result?.error) throw new Error(result.error);
 
-      // Clear cart if not buy-now
-      if (!buyNowItem) clearCart();
+      const orderId = result.order.id;
 
-      toast({ title: 'Pesanan berhasil dibuat!', description: `No. Pesanan: ${result.order.order_number}` });
-      navigate(`/orders/${result.order.id}`, { replace: true });
+      // Langkah 2: Buka Midtrans Snap jika bukan COD
+      if (paymentMethod === 'midtrans') {
+        setSubmitting(false);
+        await openSnapPayment(orderId);
+      } else {
+        // COD — langsung ke halaman pesanan
+        if (!buyNowItem) clearCart();
+        toast({ title: 'Pesanan berhasil!', description: `No. ${result.order.order_number}` });
+        navigate(`/orders/${orderId}`, { replace: true });
+      }
     } catch (err: any) {
       toast({ title: 'Gagal checkout', description: err.message, variant: 'destructive' });
-    } finally {
       setSubmitting(false);
     }
   };
@@ -174,8 +221,6 @@ const Checkout = () => {
   if (authLoading || !user) {
     return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
-
-  const selectedPayment = PAYMENT_METHODS.find(p => p.id === paymentMethod);
 
   return (
     <div className="min-h-screen bg-background">
@@ -278,36 +323,63 @@ const Checkout = () => {
                     <p className="text-sm font-medium text-card-foreground">Reguler</p>
                     <p className="text-xs text-muted-foreground">Estimasi 3-5 hari kerja</p>
                   </div>
-                  <span className="text-sm font-bold text-primary">{formatPrice(SHIPPING_COST)}</span>
+                  {shippingFee === 0
+                    ? <span className="text-sm font-bold text-green-600">GRATIS</span>
+                    : <span className="text-sm font-bold text-primary">{formatPrice(shippingFee)}</span>
+                  }
                 </div>
               </div>
+              {shippingFee === 0 && (
+                <p className="mt-2 text-xs text-green-600">🎉 Selamat! Anda mendapat gratis ongkir untuk pembelian di atas Rp200.000</p>
+              )}
             </section>
 
-            {/* 4. Payment */}
+            {/* 4. Payment Method */}
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
               <h2 className="flex items-center gap-2 font-display text-base font-bold text-card-foreground mb-3">
                 <CreditCard className="h-5 w-5 text-primary" /> Metode Pembayaran
               </h2>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {PAYMENT_METHODS.map(pm => (
-                  <div key={pm.id}>
-                    <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition ${paymentMethod === pm.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}>
-                      <input type="radio" name="payment" className="accent-primary" checked={paymentMethod === pm.id} onChange={() => { setPaymentMethod(pm.id); setPaymentDetail(''); }} />
-                      <span className="text-lg">{pm.icon}</span>
-                      <span className="text-sm font-medium text-card-foreground">{pm.label}</span>
-                    </label>
-                    {paymentMethod === pm.id && pm.options && (
-                      <div className="ml-8 mt-2 flex flex-wrap gap-2">
-                        {pm.options.map(opt => (
-                          <button key={opt.id} onClick={() => setPaymentDetail(opt.id)} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${paymentDetail === opt.id ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}>
-                            {opt.label}
-                          </button>
-                        ))}
+                  <label
+                    key={pm.id}
+                    className={`flex cursor-pointer gap-3 rounded-xl border-2 p-4 transition-all duration-200 ${paymentMethod === pm.id
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-border hover:border-primary/40'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      className="mt-1 accent-primary"
+                      checked={paymentMethod === pm.id}
+                      onChange={() => setPaymentMethod(pm.id)}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        {pm.icon}
+                        <span className="text-sm font-semibold text-card-foreground">{pm.label}</span>
                       </div>
-                    )}
-                  </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{pm.description}</p>
+                      {pm.badges.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {pm.badges.map(b => (
+                            <span key={b} className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{b}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </label>
                 ))}
               </div>
+
+              {/* Midtrans Security Badge */}
+              {paymentMethod === 'midtrans' && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/30 px-3 py-2 text-xs text-green-700 dark:text-green-400">
+                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                  <span>Pembayaran aman & terenkripsi oleh <strong>Midtrans</strong> — mitra resmi Bank Indonesia</span>
+                </div>
+              )}
             </section>
 
             {/* 5. Notes */}
@@ -317,7 +389,7 @@ const Checkout = () => {
             </section>
           </div>
 
-          {/* Summary sidebar */}
+          {/* Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-28 rounded-xl border border-border bg-card p-5">
               <h2 className="font-display text-lg font-bold text-card-foreground mb-4">Ringkasan Pesanan</h2>
@@ -328,7 +400,10 @@ const Checkout = () => {
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Ongkos Kirim</span>
-                  <span className="text-foreground font-medium">{formatPrice(SHIPPING_COST)}</span>
+                  {shippingFee === 0
+                    ? <span className="text-green-600 font-medium">Gratis</span>
+                    : <span className="text-foreground font-medium">{formatPrice(shippingFee)}</span>
+                  }
                 </div>
               </div>
               <div className="my-4 border-t border-border" />
@@ -337,15 +412,22 @@ const Checkout = () => {
                 <span className="text-primary">{formatPrice(total)}</span>
               </div>
 
-              {paymentMethod && paymentMethod !== 'cod' && (
-                <div className="mt-3 flex items-start gap-2 rounded-lg bg-accent/10 p-2.5 text-xs text-accent-foreground">
-                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>Batas waktu pembayaran 24 jam. Pesanan otomatis dibatalkan jika tidak dibayar.</span>
+              {paymentMethod === 'midtrans' && (
+                <div className="mt-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400">
+                  Setelah klik "Buat Pesanan", pilih metode bayar di popup Midtrans.
                 </div>
               )}
 
-              <Button className="mt-5 w-full rounded-full" size="lg" onClick={handlePlaceOrder} disabled={submitting}>
-                {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</> : 'Buat Pesanan'}
+              <Button
+                className="mt-5 w-full rounded-full"
+                size="lg"
+                onClick={handlePlaceOrder}
+                disabled={submitting || !selectedAddressId}
+              >
+                {submitting
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</>
+                  : paymentMethod === 'midtrans' ? '🔒 Buat Pesanan & Bayar' : 'Buat Pesanan'
+                }
               </Button>
               <Link to="/cart" className="mt-3 flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-primary transition">
                 <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Keranjang

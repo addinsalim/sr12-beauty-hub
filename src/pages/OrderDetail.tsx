@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, CreditCard, Truck, Printer, Download, Loader2, Clock } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Package, MapPin, CreditCard, Truck, Printer, Loader2, Clock, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatPrice } from '@/lib/supabaseHelpers';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import '@/types/midtrans.d.ts';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending_payment: { label: 'Menunggu Pembayaran', color: 'bg-yellow-100 text-yellow-800' },
@@ -17,13 +19,17 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 const OrderDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [order, setOrder] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [address, setAddress] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
   const [shipment, setShipment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [payingSnap, setPayingSnap] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const snapScriptLoaded = useRef(false);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -51,6 +57,56 @@ const OrderDetail = () => {
   }, [id, user]);
 
   const handlePrint = () => window.print();
+
+  // Load Midtrans Snap.js jika belum
+  useEffect(() => {
+    if (snapScriptLoaded.current) return;
+    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
+    const snapUrl = import.meta.env.VITE_MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js';
+    const script = document.createElement('script');
+    script.src = snapUrl;
+    script.setAttribute('data-client-key', clientKey);
+    script.async = true;
+    document.head.appendChild(script);
+    snapScriptLoaded.current = true;
+  }, []);
+
+  const handleContinuePayment = async () => {
+    if (!order) return;
+    setPayingSnap(true);
+    try {
+      const res = await supabase.functions.invoke('create-payment', {
+        body: { order_id: order.id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      const { snap_token } = res.data;
+      if (!snap_token) throw new Error('Gagal mendapatkan token pembayaran');
+      if (!window.snap) {
+        toast({ title: 'Snap belum siap', description: 'Refresh halaman dan coba lagi.', variant: 'destructive' });
+        return;
+      }
+      window.snap.pay(snap_token, {
+        onSuccess: () => {
+          toast({ title: '✅ Pembayaran berhasil!' });
+          setOrder((prev: any) => ({ ...prev, status: 'processing' }));
+          setPayment((prev: any) => ({ ...prev, status: 'confirmed' }));
+        },
+        onPending: () => {
+          toast({ title: '⏳ Menunggu pembayaran', description: 'Selesaikan pembayaran sebelum batas waktu.' });
+        },
+        onError: () => {
+          toast({ title: 'Pembayaran gagal', description: 'Silakan coba lagi.', variant: 'destructive' });
+        },
+        onClose: () => {
+          toast({ title: 'Popup ditutup', description: 'Anda masih bisa lanjutkan pembayaran di sini.' });
+        },
+      });
+    } catch (err: any) {
+      toast({ title: 'Gagal', description: err.message, variant: 'destructive' });
+    } finally {
+      setPayingSnap(false);
+    }
+  };
 
   if (loading) return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!order) return <div className="container mx-auto px-4 py-20 text-center"><p className="text-muted-foreground">Pesanan tidak ditemukan.</p><Link to="/my-orders" className="mt-4 inline-flex items-center gap-2 text-primary"><ArrowLeft className="h-4 w-4" /> Kembali</Link></div>;
@@ -117,11 +173,33 @@ const OrderDetail = () => {
           {payment && (
             <div className="rounded-xl border border-border bg-card p-5 print:border-0 print:p-0">
               <h2 className="flex items-center gap-2 text-base font-bold text-card-foreground mb-2"><CreditCard className="h-4 w-4 text-primary" /> Pembayaran</h2>
-              <p className="text-sm text-muted-foreground">Metode: <span className="text-foreground font-medium">{payment.method}{payment.bank_name ? ` - ${payment.bank_name}` : ''}</span></p>
-              <p className="text-sm text-muted-foreground">Status: <span className="text-foreground font-medium">{payment.status === 'confirmed' ? 'Dikonfirmasi' : payment.status === 'pending' ? 'Menunggu' : payment.status}</span></p>
-              {order.status === 'pending_payment' && (
-                <div className="mt-2 flex items-center gap-2 rounded-lg bg-yellow-50 p-2 text-xs text-yellow-700">
-                  <Clock className="h-4 w-4" /> Batas waktu pembayaran 24 jam sejak pesanan dibuat.
+              <p className="text-sm text-muted-foreground">Metode: <span className="text-foreground font-medium">{payment.method === 'midtrans' ? 'Midtrans (Online)' : payment.method}{payment.bank_name ? ` - ${payment.bank_name}` : ''}</span></p>
+              <p className="text-sm text-muted-foreground">Status: <span className={`font-medium ${payment.status === 'confirmed' ? 'text-green-600' : payment.status === 'failed' ? 'text-red-500' : 'text-yellow-600'}`}>{payment.status === 'confirmed' ? '✅ Dikonfirmasi' : payment.status === 'failed' ? '❌ Gagal' : '⏳ Menunggu'}</span></p>
+
+              {order.status === 'pending_payment' && payment.method === 'midtrans' && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 p-2.5 text-xs text-yellow-700 dark:text-yellow-400">
+                    <Clock className="h-4 w-4 shrink-0" /> Batas waktu pembayaran 24 jam sejak pesanan dibuat.
+                  </div>
+                  <Button
+                    className="w-full rounded-full"
+                    onClick={handleContinuePayment}
+                    disabled={payingSnap}
+                  >
+                    {payingSnap
+                      ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Membuka pembayaran...</>
+                      : '🔒 Lanjutkan Pembayaran'
+                    }
+                  </Button>
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Aman & terenkripsi oleh Midtrans
+                  </div>
+                </div>
+              )}
+
+              {order.status === 'pending_payment' && payment.method === 'cod' && (
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 p-2 text-xs text-yellow-700 dark:text-yellow-400">
+                  <Clock className="h-4 w-4" /> Bayar tunai saat paket tiba di alamat Anda.
                 </div>
               )}
             </div>
