@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { MapPin, Truck, CreditCard, Plus, ArrowLeft, Package, Loader2, ShieldCheck, Wallet, QrCode } from 'lucide-react';
+import { MapPin, Truck, Plus, ArrowLeft, Package, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart, CartItem } from '@/hooks/useCart';
 import { formatPrice } from '@/lib/supabaseHelpers';
