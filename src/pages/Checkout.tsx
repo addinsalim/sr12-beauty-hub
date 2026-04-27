@@ -116,7 +116,6 @@ const Checkout = () => {
 
   const openSnapPayment = async (orderId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('create-payment', {
         body: { order_id: orderId },
       });
