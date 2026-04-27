@@ -331,7 +331,6 @@ export type Database = {
           name: string
           price: number
           rating: number | null
-          reseller_price: number
           review_count: number | null
           slug: string
           stock: number
@@ -351,7 +350,6 @@ export type Database = {
           name: string
           price?: number
           rating?: number | null
-          reseller_price?: number
           review_count?: number | null
           slug: string
           stock?: number
@@ -371,7 +369,6 @@ export type Database = {
           name?: string
           price?: number
           rating?: number | null
-          reseller_price?: number
           review_count?: number | null
           slug?: string
           stock?: number
@@ -414,42 +411,6 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      resellers: {
-        Row: {
-          approved_at: string | null
-          approved_by: string | null
-          code: string
-          created_at: string
-          id: string
-          min_purchase: number | null
-          special_discount: number | null
-          status: string
-          user_id: string
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          code: string
-          created_at?: string
-          id?: string
-          min_purchase?: number | null
-          special_discount?: number | null
-          status?: string
-          user_id: string
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          code?: string
-          created_at?: string
-          id?: string
-          min_purchase?: number | null
-          special_discount?: number | null
-          status?: string
           user_id?: string
         }
         Relationships: []
@@ -751,6 +712,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      reduce_product_stock: {
+        Args: { p_product_id: string; p_quantity: number }
+        Returns: undefined
+      }
       reduce_variant_stock: {
         Args: { p_quantity: number; p_variant_id: string }
         Returns: undefined
@@ -761,7 +726,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "admin" | "reseller" | "customer" | "courier"
+      app_role: "owner" | "admin" | "customer" | "courier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -889,7 +854,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "admin", "reseller", "customer", "courier"],
+      app_role: ["owner", "admin", "customer", "courier"],
     },
   },
 } as const
