@@ -14,15 +14,114 @@ interface OrderItem {
 interface CreateOrderRequest {
   items: OrderItem[]
   address_id: string
-  payment_method: string // 'cod' | 'transfer_bank' | 'ewallet'
+  payment_method: string
   payment_detail?: string
   notes?: string
 }
 
-// Server-side shipping rule (ignore client-supplied value)
+type Resolved = {
+  product_id: string
+  variant_id: string | null
+  quantity: number
+  unit_price: number
+}
+
+const FREE_SHIPPING_THRESHOLD = 200000
+const FLAT_SHIPPING = 20000
+
 function calculateShipping(subtotal: number): number {
-  if (subtotal >= 200000) return 0
-  return 20000
+  return subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING
+}
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+async function resolvePricing(
+  supabase: ReturnType<typeof createClient>,
+  items: OrderItem[],
+): Promise<Resolved[]> {
+  const resolved: Resolved[] = []
+
+  for (const item of items) {
+    if (item.variant_id) {
+      const { data: variant, error } = await supabase
+        .from('variants')
+        .select('id, stock, name, price, product_id')
+        .eq('id', item.variant_id)
+        .single()
+      if (error || !variant) throw new Error('Varian produk tidak ditemukan')
+      if (variant.product_id !== item.product_id) throw new Error('Varian tidak cocok dengan produk')
+      if (variant.stock < item.quantity) {
+        throw new Error(`Stok ${variant.name} tidak mencukupi (tersisa ${variant.stock})`)
+      }
+
+      let unitPrice = Number(variant.price) || 0
+      if (unitPrice === 0) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('price, discount')
+          .eq('id', item.product_id)
+          .single()
+        if (product) {
+          const discount = Number(product.discount) || 0
+          unitPrice = Math.round(Number(product.price) * (1 - discount / 100))
+        }
+      }
+
+      resolved.push({
+        product_id: item.product_id,
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+        unit_price: unitPrice,
+      })
+    } else {
+      const { data: product, error } = await supabase
+        .from('products')
+        .select('id, stock, name, price, discount')
+        .eq('id', item.product_id)
+        .single()
+      if (error || !product) throw new Error('Produk tidak ditemukan')
+      if (product.stock < item.quantity) {
+        throw new Error(`Stok ${product.name} tidak mencukupi (tersisa ${product.stock})`)
+      }
+      const discount = Number(product.discount) || 0
+      const unitPrice = Math.round(Number(product.price) * (1 - discount / 100))
+
+      resolved.push({
+        product_id: item.product_id,
+        variant_id: null,
+        quantity: item.quantity,
+        unit_price: unitPrice,
+      })
+    }
+  }
+
+  return resolved
+}
+
+async function deductStock(
+  supabase: ReturnType<typeof createClient>,
+  resolved: Resolved[],
+) {
+  for (const item of resolved) {
+    if (item.variant_id) {
+      const { error } = await supabase.rpc('reduce_variant_stock', {
+        p_variant_id: item.variant_id,
+        p_quantity: item.quantity,
+      })
+      if (error) throw new Error(`Gagal mengurangi stok varian: ${error.message}`)
+    } else {
+      const { error } = await supabase.rpc('reduce_product_stock', {
+        p_product_id: item.product_id,
+        p_quantity: item.quantity,
+      })
+      if (error) throw new Error(`Gagal mengurangi stok produk: ${error.message}`)
+    }
+  }
 }
 
 Deno.serve(async (req) => {
@@ -33,34 +132,26 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
 
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
+    if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401)
 
-    const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } }
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
     })
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    console.log('create-order called, user:', user.id)
+    if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
     const body: CreateOrderRequest = await req.json()
     const { items, address_id, payment_method, payment_detail, notes } = body
 
+    // Validasi input
     if (!items?.length) throw new Error('Keranjang kosong')
+    if (items.length > 50) throw new Error('Terlalu banyak item')
     if (!address_id) throw new Error('Alamat pengiriman harus dipilih')
     if (!payment_method) throw new Error('Metode pembayaran harus dipilih')
 
-    // Validate quantities
     for (const i of items) {
       if (!i.product_id || !Number.isInteger(i.quantity) || i.quantity <= 0 || i.quantity > 1000) {
         throw new Error('Jumlah item tidak valid')
@@ -69,86 +160,24 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Determine if user is reseller (for pricing tier)
-    const { data: resellerRoleRows } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'reseller')
-    const isReseller = !!resellerRoleRows && resellerRoleRows.length > 0
-
-    // Validate stock + fetch SERVER-side prices (never trust client)
-    type Resolved = { product_id: string; variant_id: string | null; quantity: number; unit_price: number }
-    const resolved: Resolved[] = []
-
-    for (const item of items) {
-      if (item.variant_id) {
-        const { data: variant, error } = await supabase
-          .from('variants')
-          .select('id, stock, name, price, product_id')
-          .eq('id', item.variant_id)
-          .single()
-        if (error || !variant) throw new Error('Varian produk tidak ditemukan')
-        if (variant.product_id !== item.product_id) throw new Error('Varian tidak cocok dengan produk')
-        if (variant.stock < item.quantity) {
-          throw new Error(`Stok ${variant.name} tidak mencukupi (tersisa ${variant.stock})`)
-        }
-
-        // For reseller pricing fall back to product if variant has no special price
-        let unitPrice = Number(variant.price) || 0
-        if (isReseller || unitPrice === 0) {
-          const { data: product } = await supabase
-            .from('products')
-            .select('price, reseller_price, discount')
-            .eq('id', item.product_id)
-            .single()
-          if (product) {
-            const base = isReseller && product.reseller_price > 0
-              ? Number(product.reseller_price)
-              : (unitPrice > 0 ? unitPrice : Number(product.price))
-            const discount = Number(product.discount) || 0
-            unitPrice = Math.round(base * (1 - discount / 100))
-          }
-        }
-
-        resolved.push({
-          product_id: item.product_id,
-          variant_id: item.variant_id,
-          quantity: item.quantity,
-          unit_price: unitPrice,
-        })
-      } else {
-        const { data: product, error } = await supabase
-          .from('products')
-          .select('id, stock, name, price, reseller_price, discount')
-          .eq('id', item.product_id)
-          .single()
-        if (error || !product) throw new Error('Produk tidak ditemukan')
-        if (product.stock < item.quantity) {
-          throw new Error(`Stok ${product.name} tidak mencukupi (tersisa ${product.stock})`)
-        }
-        const base = isReseller && product.reseller_price > 0
-          ? Number(product.reseller_price)
-          : Number(product.price)
-        const discount = Number(product.discount) || 0
-        const unitPrice = Math.round(base * (1 - discount / 100))
-
-        resolved.push({
-          product_id: item.product_id,
-          variant_id: null,
-          quantity: item.quantity,
-          unit_price: unitPrice,
-        })
-      }
+    // Verifikasi alamat milik user
+    const { data: addr, error: addrErr } = await supabase
+      .from('addresses')
+      .select('id, user_id')
+      .eq('id', address_id)
+      .single()
+    if (addrErr || !addr || addr.user_id !== user.id) {
+      throw new Error('Alamat tidak valid')
     }
 
-    // Server-side totals
+    // Hitung harga di server (jangan percaya client)
+    const resolved = await resolvePricing(supabase, items)
     const subtotal = resolved.reduce((s, i) => s + i.unit_price * i.quantity, 0)
     const shipping_cost = calculateShipping(subtotal)
     const total = subtotal + shipping_cost
-
     const status = payment_method === 'cod' ? 'processing' : 'pending_payment'
 
+    // Buat order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -162,9 +191,9 @@ Deno.serve(async (req) => {
       })
       .select()
       .single()
-
     if (orderError) throw new Error(`Gagal membuat pesanan: ${orderError.message}`)
 
+    // Insert items
     const orderItems = resolved.map(i => ({
       order_id: order.id,
       product_id: i.product_id,
@@ -173,32 +202,13 @@ Deno.serve(async (req) => {
       price: i.unit_price,
       total: i.unit_price * i.quantity,
     }))
-
     const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
     if (itemsError) throw new Error(`Gagal menyimpan item pesanan: ${itemsError.message}`)
 
-    for (const item of resolved) {
-      if (item.variant_id) {
-        const { error: stockError } = await supabase.rpc('reduce_variant_stock', {
-          p_variant_id: item.variant_id,
-          p_quantity: item.quantity,
-        })
-        if (stockError) throw new Error(`Gagal mengurangi stok: ${stockError.message}`)
-      } else {
-        const { data: product, error: fetchError } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', item.product_id)
-          .single()
-        if (fetchError || !product) throw new Error(`Gagal mengambil stok produk`)
-        const { error: stockError } = await supabase
-          .from('products')
-          .update({ stock: product.stock - item.quantity })
-          .eq('id', item.product_id)
-        if (stockError) throw new Error(`Gagal mengurangi stok: ${stockError.message}`)
-      }
-    }
+    // Kurangi stok atomically
+    await deductStock(supabase, resolved)
 
+    // Buat payment record
     const { error: paymentError } = await supabase.from('payments').insert({
       order_id: order.id,
       amount: total,
@@ -208,6 +218,7 @@ Deno.serve(async (req) => {
     })
     if (paymentError) throw new Error(`Gagal membuat pembayaran: ${paymentError.message}`)
 
+    // Notifikasi
     await supabase.from('notifications').insert({
       user_id: user.id,
       title: 'Pesanan Dibuat',
@@ -215,7 +226,7 @@ Deno.serve(async (req) => {
       type: 'order',
     })
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       success: true,
       order: {
         id: order.id,
@@ -224,17 +235,11 @@ Deno.serve(async (req) => {
         total: order.total,
         subtotal,
         shipping_cost,
-      }
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Terjadi kesalahan'
     console.error('create-order error:', message)
-    return new Response(JSON.stringify({ error: message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return jsonResponse({ error: message }, 400)
   }
 })

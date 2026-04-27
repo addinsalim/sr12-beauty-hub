@@ -164,17 +164,15 @@ const Checkout = () => {
 
     setSubmitting(true);
     try {
-      // Langkah 1: Buat order
+      // Langkah 1: Buat order (harga & ongkir dihitung server-side)
       const res = await supabase.functions.invoke('create-order', {
         body: {
           items: checkoutItems.map(i => ({
             product_id: i.productId,
             variant_id: i.variantId,
             quantity: i.quantity,
-            price: i.price,
           })),
           address_id: selectedAddressId,
-          shipping_cost: shippingFee,
           payment_method: paymentMethod,
           notes: notes || undefined,
         },
