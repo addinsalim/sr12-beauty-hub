@@ -41,7 +41,7 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 async function resolvePricing(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   items: OrderItem[],
 ): Promise<Resolved[]> {
   const resolved: Resolved[] = []
@@ -104,7 +104,7 @@ async function resolvePricing(
 }
 
 async function deductStock(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   resolved: Resolved[],
 ) {
   for (const item of resolved) {
