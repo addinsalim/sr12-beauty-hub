@@ -156,17 +156,60 @@ const Profile = () => {
     if (file.size > MAX_AVATAR) { toast.error('Maksimal 5MB'); return; }
 
     setUploadingAvatar(true);
-    const ext = file.name.split('.').pop();
-    const path = `${user!.id}/avatar-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-    if (upErr) { setUploadingAvatar(false); toast.error('Upload gagal: ' + upErr.message); return; }
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-    const { error: updErr } = await supabase.from('profiles')
-      .update({ avatar_url: publicUrl }).eq('user_id', user!.id);
-    setUploadingAvatar(false);
-    if (updErr) { toast.error('Gagal menyimpan: ' + updErr.message); return; }
-    toast.success('Foto profil diperbarui');
-    await refreshProfile();
+    try {
+      // Pastikan sesi aktif (auth.uid() harus tersedia di server untuk RLS)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast.error('Sesi berakhir, silakan login ulang');
+        setUploadingAvatar(false);
+        return;
+      }
+
+      const extRaw = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const ext = extRaw === 'jpeg' ? 'jpg' : extRaw;
+      // Path unik di dalam folder user → cocok dengan RLS (folder pertama = user.id)
+      const path = `${user!.id}/avatar-${Date.now()}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (upErr) {
+        console.error('Avatar upload error:', upErr);
+        toast.error('Upload gagal: ' + (upErr.message || 'tidak diketahui'));
+        setUploadingAvatar(false);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+      // Cache buster supaya browser memuat foto baru
+      const finalUrl = `${publicUrl}?v=${Date.now()}`;
+
+      const { error: updErr } = await supabase
+        .from('profiles')
+        .update({ avatar_url: finalUrl })
+        .eq('user_id', user!.id);
+
+      if (updErr) {
+        console.error('Profile update error:', updErr);
+        toast.error('Gagal menyimpan: ' + updErr.message);
+        setUploadingAvatar(false);
+        return;
+      }
+
+      toast.success('Foto profil diperbarui');
+      await refreshProfile();
+    } catch (err: any) {
+      console.error('Unexpected avatar error:', err);
+      toast.error('Terjadi kesalahan: ' + (err?.message || 'tidak diketahui'));
+    } finally {
+      setUploadingAvatar(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
   };
 
   // ---- Address ----
