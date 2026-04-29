@@ -12,6 +12,7 @@ interface AuthContextType {
   profile: { full_name: string | null; phone: string | null; avatar_url: string | null } | null;
   hasRole: (role: AppRole) => boolean;
   isAdmin: boolean;
+  refreshProfile: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -102,8 +103,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
 
+  const refreshProfile = useCallback(async () => {
+    if (user) await fetchUserData(user.id);
+  }, [user, fetchUserData]);
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, roles, profile, hasRole, isAdmin, signIn, signUp, signOut, resetPassword, updatePassword, verifyCurrentPassword }}>
+    <AuthContext.Provider value={{ user, session, loading, roles, profile, hasRole, isAdmin, signIn, signUp, signOut, resetPassword, updatePassword, verifyCurrentPassword, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
