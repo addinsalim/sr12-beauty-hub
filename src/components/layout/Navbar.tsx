@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound } from 'lucide-react';
+import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -111,9 +111,16 @@ const Navbar = () => {
                 <Link to="/my-orders" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110">
                   <Package className="h-5 w-5" />
                 </Link>
-                <div className="flex items-center bg-secondary/50 rounded-full px-3 py-1 border border-border">
+                <Link to="/profile" className="flex items-center gap-2 bg-secondary/50 rounded-full pl-1 pr-3 py-1 border border-border hover:shadow-glow transition" title="Profil Saya">
+                  <span className="h-7 w-7 rounded-full overflow-hidden bg-primary/15 flex items-center justify-center text-primary text-xs font-bold">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      (profile?.full_name || user.email || 'U').slice(0, 1).toUpperCase()
+                    )}
+                  </span>
                   <span className="text-sm font-medium truncate max-w-[100px] text-foreground">{profile?.full_name || user.email?.split('@')[0]}</span>
-                </div>
+                </Link>
                 <Link to="/change-password" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110" title="Ganti Password">
                   <KeyRound className="h-5 w-5" />
                 </Link>
@@ -211,6 +218,9 @@ const Navbar = () => {
                       <LayoutDashboard className="h-5 w-5 text-primary" /> Admin Dashboard
                     </Link>
                   )}
+                  <Link to="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <UserCircle className="h-5 w-5 text-primary" /> Profil Saya
+                  </Link>
                   <Link to="/my-orders" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
                     <Package className="h-5 w-5 text-primary" /> Pesanan Saya
                   </Link>
