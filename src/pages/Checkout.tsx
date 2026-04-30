@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { MapPin, Truck, Plus, ArrowLeft, Package, Loader2, ShieldCheck } from 'lucide-react';
+import { MapPin, Truck, Plus, ArrowLeft, Package, Loader2, ShieldCheck, Ticket, Coins, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart, CartItem } from '@/hooks/useCart';
 import { formatPrice } from '@/lib/supabaseHelpers';
@@ -50,6 +50,13 @@ const Checkout = () => {
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const snapScriptLoaded = useRef(false);
 
+  // Voucher & points
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [availablePoints, setAvailablePoints] = useState(0);
+  const [usePoints, setUsePoints] = useState(0);
+
   // Load Midtrans Snap.js
   useEffect(() => {
     if (snapScriptLoaded.current) return;
@@ -92,9 +99,29 @@ const Checkout = () => {
       });
   }, [user]);
 
+  // Load points balance
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('user_points').select('balance').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setAvailablePoints(data?.balance || 0));
+  }, [user]);
+
   const subtotal = checkoutItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const shippingFee = subtotal >= 200000 ? 0 : SHIPPING_COST;
-  const total = subtotal + shippingFee;
+
+  // Calculate voucher discount
+  const voucherDiscount = (() => {
+    if (!appliedVoucher) return 0;
+    if (subtotal < appliedVoucher.min_purchase) return 0;
+    let d = appliedVoucher.discount_type === 'percent'
+      ? Math.floor(subtotal * appliedVoucher.discount_value / 100)
+      : appliedVoucher.discount_value;
+    if (appliedVoucher.max_discount) d = Math.min(d, appliedVoucher.max_discount);
+    return Math.min(d, subtotal);
+  })();
+
+  const pointsDiscount = Math.min(usePoints, availablePoints, subtotal - voucherDiscount);
+  const total = Math.max(0, subtotal + shippingFee - voucherDiscount - pointsDiscount);
 
   const handleAddAddress = async () => {
     if (!user) return;
@@ -112,6 +139,26 @@ const Checkout = () => {
     setShowAddressForm(false);
     setNewAddress({ label: 'Rumah', recipient_name: '', phone: '', full_address: '', city: '', province: '', postal_code: '', district: '' });
     toast({ title: 'Alamat ditambahkan' });
+  };
+
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherLoading(true);
+    const { data } = await supabase.from('vouchers').select('*')
+      .eq('code', voucherCode.trim().toUpperCase()).eq('is_active', true).maybeSingle();
+    setVoucherLoading(false);
+    if (!data) { toast({ title: 'Voucher tidak ditemukan', variant: 'destructive' }); return; }
+    if (data.valid_until && new Date(data.valid_until) < new Date()) {
+      toast({ title: 'Voucher kedaluwarsa', variant: 'destructive' }); return;
+    }
+    if (data.quota && data.used_count >= data.quota) {
+      toast({ title: 'Kuota voucher habis', variant: 'destructive' }); return;
+    }
+    if (subtotal < data.min_purchase) {
+      toast({ title: `Min. pembelian ${formatPrice(data.min_purchase)}`, variant: 'destructive' }); return;
+    }
+    setAppliedVoucher(data);
+    toast({ title: '✨ Voucher diterapkan!' });
   };
 
   const openSnapPayment = async (orderId: string) => {
@@ -183,12 +230,40 @@ const Checkout = () => {
 
       const orderId = result.order.id;
 
+      // Side-effects: catat voucher redemption, redeem poin, earn poin (1% subtotal)
+      try {
+        if (appliedVoucher && voucherDiscount > 0) {
+          await supabase.from('voucher_redemptions').insert({
+            voucher_id: appliedVoucher.id, user_id: user!.id,
+            order_id: orderId, discount_amount: voucherDiscount,
+          });
+        }
+        if (pointsDiscount > 0) {
+          await supabase.from('point_transactions').insert({
+            user_id: user!.id, amount: -pointsDiscount, type: 'redeem',
+            reference: `Tukar poin di order ${result.order.order_number}`, order_id: orderId,
+          });
+          await supabase.from('user_points').upsert({
+            user_id: user!.id, balance: availablePoints - pointsDiscount, updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+        }
+        const earned = Math.floor(subtotal * 0.01);
+        if (earned > 0) {
+          await supabase.from('point_transactions').insert({
+            user_id: user!.id, amount: earned, type: 'earn',
+            reference: `Reward order ${result.order.order_number}`, order_id: orderId,
+          });
+          await supabase.from('user_points').upsert({
+            user_id: user!.id, balance: (availablePoints - pointsDiscount) + earned, updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+        }
+      } catch (e) { console.warn('Voucher/poin side-effect:', e); }
+
       // Langkah 2: Buka Midtrans Snap jika bukan COD
       if (paymentMethod === 'midtrans') {
         setSubmitting(false);
         await openSnapPayment(orderId);
       } else {
-        // COD — langsung ke halaman pesanan
         if (!buyNowItem) clearCart();
         toast({ title: 'Pesanan berhasil!', description: `No. ${result.order.order_number}` });
         navigate(`/orders/${orderId}`, { replace: true });
@@ -323,6 +398,45 @@ const Checkout = () => {
               </div>
             </section>
 
+            {/* Voucher & Poin */}
+            <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+              <h2 className="flex items-center gap-2 font-display text-base font-bold text-card-foreground mb-3">
+                <Ticket className="h-5 w-5 text-primary" /> Voucher & Poin
+              </h2>
+              {appliedVoucher ? (
+                <div className="flex items-center justify-between rounded-lg border border-primary bg-primary/5 p-3">
+                  <div>
+                    <p className="text-sm font-bold text-primary">{appliedVoucher.code}</p>
+                    <p className="text-xs text-muted-foreground">Hemat {formatPrice(voucherDiscount)}</p>
+                  </div>
+                  <button onClick={() => { setAppliedVoucher(null); setVoucherCode(''); }} className="rounded-full p-1.5 hover:bg-destructive/10 text-destructive">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input value={voucherCode} onChange={e => setVoucherCode(e.target.value.toUpperCase())} placeholder="Masukkan kode voucher" />
+                  <Button onClick={applyVoucher} disabled={voucherLoading || !voucherCode.trim()} variant="outline">
+                    {voucherLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Pakai'}
+                  </Button>
+                </div>
+              )}
+              {availablePoints > 0 && (
+                <div className="mt-3 rounded-lg bg-secondary/40 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs flex items-center gap-1.5"><Coins className="h-4 w-4 text-primary" /> Saldo: <strong>{availablePoints.toLocaleString('id-ID')}</strong> poin</span>
+                    {usePoints > 0 && <button onClick={() => setUsePoints(0)} className="text-xs text-destructive">Batal</button>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input type="number" min={0} max={Math.min(availablePoints, subtotal - voucherDiscount)}
+                      value={usePoints || ''} onChange={e => setUsePoints(Math.max(0, Math.min(Number(e.target.value), availablePoints, subtotal - voucherDiscount)))}
+                      placeholder="Pakai poin" />
+                    <Button variant="outline" onClick={() => setUsePoints(Math.min(availablePoints, subtotal - voucherDiscount))}>Maks</Button>
+                  </div>
+                </div>
+              )}
+            </section>
+
             {/* 5. Notes */}
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
               <Label className="text-sm font-bold text-card-foreground">Catatan (opsional)</Label>
@@ -346,12 +460,27 @@ const Checkout = () => {
                     : <span className="text-foreground font-medium">{formatPrice(shippingFee)}</span>
                   }
                 </div>
+                {voucherDiscount > 0 && (
+                  <div className="flex justify-between text-rose-gold">
+                    <span>Voucher ({appliedVoucher.code})</span>
+                    <span className="font-medium">−{formatPrice(voucherDiscount)}</span>
+                  </div>
+                )}
+                {pointsDiscount > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span>Poin ({pointsDiscount.toLocaleString('id-ID')})</span>
+                    <span className="font-medium">−{formatPrice(pointsDiscount)}</span>
+                  </div>
+                )}
               </div>
               <div className="my-4 border-t border-border" />
               <div className="flex justify-between text-base font-bold">
                 <span className="text-card-foreground">Total</span>
                 <span className="text-primary">{formatPrice(total)}</span>
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                + Reward {Math.floor(subtotal * 0.01).toLocaleString('id-ID')} poin
+              </p>
 
               {paymentMethod === 'midtrans' && (
                 <div className="mt-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400">
