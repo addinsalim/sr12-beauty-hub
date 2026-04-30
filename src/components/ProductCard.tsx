@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Star, Shield, Award } from 'lucide-react';
+import { ShoppingBag, Star, Shield, Award, Heart } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/useCart';
+import { useWishlist } from '@/hooks/useWishlist';
 import { useToast } from '@/hooks/use-toast';
 import { formatPrice } from '@/lib/supabaseHelpers';
 import productParfum from '@/assets/product-parfum.png';
@@ -33,12 +34,23 @@ interface ProductCardProduct {
 const ProductCard = ({ product }: { product: ProductCardProduct }) => {
   const { t } = useI18n();
   const { addItem } = useCart();
+  const { isInWishlist, toggle } = useWishlist();
   const { toast } = useToast();
   const isOutOfStock = product.stock === 0;
   const imgSrc = product.primaryImage || product.images?.[0] || categoryImages[product.category] || productParfum;
+  const wished = isInWishlist(product.id);
 
   return (
     <div className="group glow-ring relative flex flex-col overflow-hidden rounded-2xl glass border-border/30 shadow-card transition-all duration-500 hover:-translate-y-2 hover:shadow-glow-lg">
+      {/* Wishlist heart button */}
+      <button
+        onClick={(e) => { e.preventDefault(); toggle(product.id, product.name); }}
+        className={`absolute right-3 top-3 z-10 h-8 w-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 ${wished ? 'bg-rose-gold text-white' : 'bg-white/70 text-muted-foreground hover:text-rose-gold'}`}
+        aria-label="Tambah ke wishlist"
+      >
+        <Heart className={`h-4 w-4 ${wished ? 'fill-current' : ''}`} />
+      </button>
+
       {/* Badges */}
       <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
         {product.discount ? (
