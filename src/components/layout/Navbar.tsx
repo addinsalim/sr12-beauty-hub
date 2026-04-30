@@ -219,8 +219,8 @@ const Navbar = () => {
               {user ? (
                 <>
                   {isAdmin && (
-                    <Link to="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
-                      <LayoutDashboard className="h-5 w-5 text-primary" /> Admin Dashboard
+                    <Link to="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-semibold text-primary-foreground bg-gradient-to-r from-primary to-rose-gold shadow-glow">
+                      <Shield className="h-5 w-5" /> Buka Admin Panel
                     </Link>
                   )}
                   <Link to="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
@@ -228,6 +228,15 @@ const Navbar = () => {
                   </Link>
                   <Link to="/my-orders" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
                     <Package className="h-5 w-5 text-primary" /> Pesanan Saya
+                  </Link>
+                  <Link to="/wishlist" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <Heart className="h-5 w-5 text-rose-gold" /> Wishlist {wishlistCount > 0 && <span className="ml-auto text-xs bg-rose-gold text-white rounded-full px-2 py-0.5">{wishlistCount}</span>}
+                  </Link>
+                  <Link to="/recently-viewed" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <History className="h-5 w-5 text-primary" /> Terakhir Dilihat
+                  </Link>
+                  <Link to="/my-vouchers" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <Ticket className="h-5 w-5 text-primary" /> Voucher & Poin
                   </Link>
                   <Link to="/change-password" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
                     <KeyRound className="h-5 w-5 text-primary" /> Ganti Password
