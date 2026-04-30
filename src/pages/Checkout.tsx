@@ -460,12 +460,27 @@ const Checkout = () => {
                     : <span className="text-foreground font-medium">{formatPrice(shippingFee)}</span>
                   }
                 </div>
+                {voucherDiscount > 0 && (
+                  <div className="flex justify-between text-rose-gold">
+                    <span>Voucher ({appliedVoucher.code})</span>
+                    <span className="font-medium">−{formatPrice(voucherDiscount)}</span>
+                  </div>
+                )}
+                {pointsDiscount > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span>Poin ({pointsDiscount.toLocaleString('id-ID')})</span>
+                    <span className="font-medium">−{formatPrice(pointsDiscount)}</span>
+                  </div>
+                )}
               </div>
               <div className="my-4 border-t border-border" />
               <div className="flex justify-between text-base font-bold">
                 <span className="text-card-foreground">Total</span>
                 <span className="text-primary">{formatPrice(total)}</span>
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                + Reward {Math.floor(subtotal * 0.01).toLocaleString('id-ID')} poin
+              </p>
 
               {paymentMethod === 'midtrans' && (
                 <div className="mt-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400">
