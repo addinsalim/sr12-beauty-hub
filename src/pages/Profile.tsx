@@ -353,18 +353,18 @@ const Profile = () => {
           <Package className="h-6 w-6 mx-auto text-primary mb-2 group-hover:scale-110 transition" />
           <span className="text-xs sm:text-sm font-medium">Pesanan Saya</span>
         </Link>
-        <Link to="/cart" className="rounded-2xl glass p-4 text-center hover:shadow-glow transition group">
-          <Star className="h-6 w-6 mx-auto text-primary mb-2 group-hover:scale-110 transition" />
-          <span className="text-xs sm:text-sm font-medium">Keranjang</span>
+        <Link to="/wishlist" className="rounded-2xl glass p-4 text-center hover:shadow-glow transition group">
+          <Star className="h-6 w-6 mx-auto text-rose-gold mb-2 group-hover:scale-110 transition" />
+          <span className="text-xs sm:text-sm font-medium">Wishlist</span>
         </Link>
-        <Link to="/change-password" className="rounded-2xl glass p-4 text-center hover:shadow-glow transition group">
+        <Link to="/my-vouchers" className="rounded-2xl glass p-4 text-center hover:shadow-glow transition group">
           <KeyRound className="h-6 w-6 mx-auto text-primary mb-2 group-hover:scale-110 transition" />
-          <span className="text-xs sm:text-sm font-medium">Ganti Password</span>
+          <span className="text-xs sm:text-sm font-medium">Voucher & Poin</span>
         </Link>
-        <button onClick={() => signOut().then(() => navigate('/'))} className="rounded-2xl glass p-4 text-center hover:shadow-glow transition group">
-          <LogOut className="h-6 w-6 mx-auto text-destructive mb-2 group-hover:scale-110 transition" />
-          <span className="text-xs sm:text-sm font-medium">Keluar</span>
-        </button>
+        <Link to="/recently-viewed" className="rounded-2xl glass p-4 text-center hover:shadow-glow transition group">
+          <Home className="h-6 w-6 mx-auto text-primary mb-2 group-hover:scale-110 transition" />
+          <span className="text-xs sm:text-sm font-medium">Terakhir Dilihat</span>
+        </Link>
       </div>
 
       {/* Tabs */}
