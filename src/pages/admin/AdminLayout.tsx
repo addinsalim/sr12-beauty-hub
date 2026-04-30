@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Users, ShoppingCart, CreditCard, Truck, BarChart3, LogOut, ChevronLeft } from 'lucide-react';
+import { LayoutDashboard, Package, Users, ShoppingCart, CreditCard, Truck, BarChart3, LogOut, ChevronLeft, Ticket, MessageCircle, Store } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const sidebarLinks = [
@@ -10,6 +10,8 @@ const sidebarLinks = [
   { href: '/admin/users', label: 'Pengguna', icon: Users },
   { href: '/admin/payments', label: 'Pembayaran', icon: CreditCard },
   { href: '/admin/shipments', label: 'Pengiriman', icon: Truck },
+  { href: '/admin/vouchers', label: 'Voucher', icon: Ticket },
+  { href: '/admin/chat', label: 'Pesan', icon: MessageCircle },
   { href: '/admin/reports', label: 'Laporan', icon: BarChart3 },
 ];
 
@@ -59,11 +61,11 @@ const AdminLayout = () => {
 
         <div className="border-t border-border p-4">
           <div className="mb-3 text-sm text-muted-foreground truncate">{profile?.full_name || user.email}</div>
-          <div className="flex gap-2">
-            <Link to="/" className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary">
-              <ChevronLeft className="h-4 w-4" /> Kembali
+          <div className="flex flex-col gap-2">
+            <Link to="/" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-primary/10 text-primary font-medium hover:bg-primary/20 transition">
+              <Store className="h-4 w-4" /> Lihat Toko (Customer)
             </Link>
-            <button onClick={signOut} className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10">
+            <button onClick={signOut} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10">
               <LogOut className="h-4 w-4" /> Keluar
             </button>
           </div>
