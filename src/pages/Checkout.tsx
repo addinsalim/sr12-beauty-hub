@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { MapPin, Truck, Plus, ArrowLeft, Package, Loader2, ShieldCheck } from 'lucide-react';
+import { MapPin, Truck, Plus, ArrowLeft, Package, Loader2, ShieldCheck, Ticket, Coins, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart, CartItem } from '@/hooks/useCart';
 import { formatPrice } from '@/lib/supabaseHelpers';
@@ -50,6 +50,13 @@ const Checkout = () => {
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const snapScriptLoaded = useRef(false);
 
+  // Voucher & points
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [availablePoints, setAvailablePoints] = useState(0);
+  const [usePoints, setUsePoints] = useState(0);
+
   // Load Midtrans Snap.js
   useEffect(() => {
     if (snapScriptLoaded.current) return;
@@ -92,9 +99,29 @@ const Checkout = () => {
       });
   }, [user]);
 
+  // Load points balance
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('user_points').select('balance').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setAvailablePoints(data?.balance || 0));
+  }, [user]);
+
   const subtotal = checkoutItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const shippingFee = subtotal >= 200000 ? 0 : SHIPPING_COST;
-  const total = subtotal + shippingFee;
+
+  // Calculate voucher discount
+  const voucherDiscount = (() => {
+    if (!appliedVoucher) return 0;
+    if (subtotal < appliedVoucher.min_purchase) return 0;
+    let d = appliedVoucher.discount_type === 'percent'
+      ? Math.floor(subtotal * appliedVoucher.discount_value / 100)
+      : appliedVoucher.discount_value;
+    if (appliedVoucher.max_discount) d = Math.min(d, appliedVoucher.max_discount);
+    return Math.min(d, subtotal);
+  })();
+
+  const pointsDiscount = Math.min(usePoints, availablePoints, subtotal - voucherDiscount);
+  const total = Math.max(0, subtotal + shippingFee - voucherDiscount - pointsDiscount);
 
   const handleAddAddress = async () => {
     if (!user) return;
