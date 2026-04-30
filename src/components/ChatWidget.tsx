@@ -1,0 +1,158 @@
+import { useEffect, useRef, useState } from 'react';
+import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useLocation } from 'react-router-dom';
+
+const ChatWidget = () => {
+  const { user, isAdmin } = useAuth();
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const [thread, setThread] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Hide on admin routes & for admins themselves
+  if (isAdmin || location.pathname.startsWith('/admin') || !user) return null;
+
+  const ensureThread = async () => {
+    setLoading(true);
+    let { data: t } = await supabase.from('chat_threads').select('*').eq('user_id', user.id).maybeSingle();
+    if (!t) {
+      const { data: created } = await supabase.from('chat_threads').insert({ user_id: user.id }).select().single();
+      t = created;
+    }
+    setThread(t);
+    const { data: msgs } = await supabase.from('chat_messages').select('*').eq('thread_id', t!.id).order('created_at');
+    setMessages(msgs || []);
+    // mark admin's messages as read
+    await supabase.from('chat_messages').update({ is_read: true }).eq('thread_id', t!.id).eq('sender_role', 'admin').eq('is_read', false);
+    await supabase.from('chat_threads').update({ unread_user: 0 }).eq('id', t!.id);
+    setUnread(0);
+    setLoading(false);
+    setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
+  };
+
+  // Realtime subscribe + load unread count
+  useEffect(() => {
+    let channel: any;
+    (async () => {
+      const { data: t } = await supabase.from('chat_threads').select('*').eq('user_id', user.id).maybeSingle();
+      if (t) {
+        setUnread(t.unread_user || 0);
+        channel = supabase.channel(`thread-${t.id}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `thread_id=eq.${t.id}` }, (payload) => {
+            const m = payload.new as any;
+            if (m.sender_role === 'admin') {
+              if (open) {
+                setMessages(prev => [...prev, m]);
+                supabase.from('chat_messages').update({ is_read: true }).eq('id', m.id).then(() => {});
+              } else {
+                setUnread(u => u + 1);
+              }
+            }
+          })
+          .subscribe();
+      }
+    })();
+    return () => { if (channel) supabase.removeChannel(channel); };
+  }, [user.id, open]);
+
+  useEffect(() => { if (open && !thread) ensureThread(); }, [open]);
+
+  const send = async () => {
+    if (!input.trim() || !thread) return;
+    setSending(true);
+    const text = input.trim();
+    setInput('');
+    const { data, error } = await supabase.from('chat_messages').insert({
+      thread_id: thread.id, sender_id: user.id, sender_role: 'customer', message: text,
+    }).select().single();
+    if (!error && data) {
+      setMessages(prev => [...prev, data]);
+      await supabase.from('chat_threads').update({
+        last_message: text, last_message_at: new Date().toISOString(),
+        unread_admin: (thread.unread_admin || 0) + 1,
+      }).eq('id', thread.id);
+    }
+    setSending(false);
+    setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
+  };
+
+  return (
+    <>
+      {/* Floating button */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg hover:scale-110 transition flex items-center justify-center"
+          aria-label="Chat dengan admin"
+        >
+          <MessageCircle className="h-6 w-6" />
+          {unread > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center animate-pulse">
+              {unread}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Chat window */}
+      {open && (
+        <div className="fixed bottom-6 right-6 z-40 w-[90vw] sm:w-96 h-[70vh] sm:h-[500px] rounded-2xl glass-strong shadow-glow-lg flex flex-col overflow-hidden border border-border/40">
+          <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground">
+            <div>
+              <p className="font-semibold text-sm">SR12 Customer Service</p>
+              <p className="text-xs opacity-80">Biasanya membalas dalam 1 jam</p>
+            </div>
+            <button onClick={() => setOpen(false)}><X className="h-5 w-5" /></button>
+          </div>
+
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-background/30">
+            {loading ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : messages.length === 0 ? (
+              <div className="text-center text-xs text-muted-foreground py-10">
+                <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                Halo! Ada yang bisa kami bantu? 👋
+              </div>
+            ) : (
+              messages.map(m => (
+                <div key={m.id} className={`flex ${m.sender_role === 'customer' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${m.sender_role === 'customer' ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-secondary text-foreground rounded-bl-sm'}`}>
+                    {m.message}
+                    <p className="text-[10px] opacity-60 mt-1">{new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 p-3 border-t border-border/40 bg-card/50">
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && send()}
+              placeholder="Tulis pesan..."
+              className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              disabled={sending}
+            />
+            <button
+              onClick={send}
+              disabled={sending || !input.trim()}
+              className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50 hover:scale-105 transition"
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default ChatWidget;
