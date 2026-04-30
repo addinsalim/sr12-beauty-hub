@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle } from 'lucide-react';
+import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle, Heart, History, Ticket, Shield } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
+import { useWishlist } from '@/hooks/useWishlist';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ const Navbar = () => {
   const location = useLocation();
   const { user, isAdmin, profile, signOut } = useAuth();
   const { totalItems } = useCart();
+  const { count: wishlistCount } = useWishlist();
 
   const navLinks = [
     { href: '/', label: t.nav.home, icon: Home },
@@ -104,11 +106,17 @@ const Navbar = () => {
             {user ? (
               <div className="hidden items-center gap-2 sm:flex">
                 {isAdmin && (
-                  <Link to="/admin" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110">
-                    <LayoutDashboard className="h-5 w-5" />
+                  <Link to="/admin" className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-rose-gold text-primary-foreground px-3 py-1.5 text-xs font-semibold shadow-glow hover:scale-105 transition" title="Buka Admin Panel">
+                    <Shield className="h-3.5 w-3.5" /> Admin Panel
                   </Link>
                 )}
-                <Link to="/my-orders" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110">
+                <Link to="/wishlist" className="relative rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-rose-gold hover:scale-110" title="Wishlist">
+                  <Heart className="h-5 w-5" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 h-4 min-w-4 px-1 rounded-full bg-rose-gold text-[10px] font-bold text-white flex items-center justify-center">{wishlistCount}</span>
+                  )}
+                </Link>
+                <Link to="/my-orders" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110" title="Pesanan Saya">
                   <Package className="h-5 w-5" />
                 </Link>
                 <Link to="/profile" className="flex items-center gap-2 bg-secondary/50 rounded-full pl-1 pr-3 py-1 border border-border hover:shadow-glow transition" title="Profil Saya">
@@ -121,10 +129,7 @@ const Navbar = () => {
                   </span>
                   <span className="text-sm font-medium truncate max-w-[100px] text-foreground">{profile?.full_name || user.email?.split('@')[0]}</span>
                 </Link>
-                <Link to="/change-password" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110" title="Ganti Password">
-                  <KeyRound className="h-5 w-5" />
-                </Link>
-                <button onClick={signOut} className="rounded-full p-2 text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 hover:scale-110">
+                <button onClick={signOut} className="rounded-full p-2 text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 hover:scale-110" title="Keluar">
                   <LogOut className="h-5 w-5" />
                 </button>
               </div>
