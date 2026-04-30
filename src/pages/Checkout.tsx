@@ -141,6 +141,26 @@ const Checkout = () => {
     toast({ title: 'Alamat ditambahkan' });
   };
 
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherLoading(true);
+    const { data } = await supabase.from('vouchers').select('*')
+      .eq('code', voucherCode.trim().toUpperCase()).eq('is_active', true).maybeSingle();
+    setVoucherLoading(false);
+    if (!data) { toast({ title: 'Voucher tidak ditemukan', variant: 'destructive' }); return; }
+    if (data.valid_until && new Date(data.valid_until) < new Date()) {
+      toast({ title: 'Voucher kedaluwarsa', variant: 'destructive' }); return;
+    }
+    if (data.quota && data.used_count >= data.quota) {
+      toast({ title: 'Kuota voucher habis', variant: 'destructive' }); return;
+    }
+    if (subtotal < data.min_purchase) {
+      toast({ title: `Min. pembelian ${formatPrice(data.min_purchase)}`, variant: 'destructive' }); return;
+    }
+    setAppliedVoucher(data);
+    toast({ title: '✨ Voucher diterapkan!' });
+  };
+
   const openSnapPayment = async (orderId: string) => {
     try {
       const res = await supabase.functions.invoke('create-payment', {
