@@ -230,12 +230,40 @@ const Checkout = () => {
 
       const orderId = result.order.id;
 
+      // Side-effects: catat voucher redemption, redeem poin, earn poin (1% subtotal)
+      try {
+        if (appliedVoucher && voucherDiscount > 0) {
+          await supabase.from('voucher_redemptions').insert({
+            voucher_id: appliedVoucher.id, user_id: user!.id,
+            order_id: orderId, discount_amount: voucherDiscount,
+          });
+        }
+        if (pointsDiscount > 0) {
+          await supabase.from('point_transactions').insert({
+            user_id: user!.id, amount: -pointsDiscount, type: 'redeem',
+            reference: `Tukar poin di order ${result.order.order_number}`, order_id: orderId,
+          });
+          await supabase.from('user_points').upsert({
+            user_id: user!.id, balance: availablePoints - pointsDiscount, updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+        }
+        const earned = Math.floor(subtotal * 0.01);
+        if (earned > 0) {
+          await supabase.from('point_transactions').insert({
+            user_id: user!.id, amount: earned, type: 'earn',
+            reference: `Reward order ${result.order.order_number}`, order_id: orderId,
+          });
+          await supabase.from('user_points').upsert({
+            user_id: user!.id, balance: (availablePoints - pointsDiscount) + earned, updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+        }
+      } catch (e) { console.warn('Voucher/poin side-effect:', e); }
+
       // Langkah 2: Buka Midtrans Snap jika bukan COD
       if (paymentMethod === 'midtrans') {
         setSubmitting(false);
         await openSnapPayment(orderId);
       } else {
-        // COD — langsung ke halaman pesanan
         if (!buyNowItem) clearCart();
         toast({ title: 'Pesanan berhasil!', description: `No. ${result.order.order_number}` });
         navigate(`/orders/${orderId}`, { replace: true });
