@@ -398,6 +398,45 @@ const Checkout = () => {
               </div>
             </section>
 
+            {/* Voucher & Poin */}
+            <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+              <h2 className="flex items-center gap-2 font-display text-base font-bold text-card-foreground mb-3">
+                <Ticket className="h-5 w-5 text-primary" /> Voucher & Poin
+              </h2>
+              {appliedVoucher ? (
+                <div className="flex items-center justify-between rounded-lg border border-primary bg-primary/5 p-3">
+                  <div>
+                    <p className="text-sm font-bold text-primary">{appliedVoucher.code}</p>
+                    <p className="text-xs text-muted-foreground">Hemat {formatPrice(voucherDiscount)}</p>
+                  </div>
+                  <button onClick={() => { setAppliedVoucher(null); setVoucherCode(''); }} className="rounded-full p-1.5 hover:bg-destructive/10 text-destructive">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input value={voucherCode} onChange={e => setVoucherCode(e.target.value.toUpperCase())} placeholder="Masukkan kode voucher" />
+                  <Button onClick={applyVoucher} disabled={voucherLoading || !voucherCode.trim()} variant="outline">
+                    {voucherLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Pakai'}
+                  </Button>
+                </div>
+              )}
+              {availablePoints > 0 && (
+                <div className="mt-3 rounded-lg bg-secondary/40 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs flex items-center gap-1.5"><Coins className="h-4 w-4 text-primary" /> Saldo: <strong>{availablePoints.toLocaleString('id-ID')}</strong> poin</span>
+                    {usePoints > 0 && <button onClick={() => setUsePoints(0)} className="text-xs text-destructive">Batal</button>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input type="number" min={0} max={Math.min(availablePoints, subtotal - voucherDiscount)}
+                      value={usePoints || ''} onChange={e => setUsePoints(Math.max(0, Math.min(Number(e.target.value), availablePoints, subtotal - voucherDiscount)))}
+                      placeholder="Pakai poin" />
+                    <Button variant="outline" onClick={() => setUsePoints(Math.min(availablePoints, subtotal - voucherDiscount))}>Maks</Button>
+                  </div>
+                </div>
+              )}
+            </section>
+
             {/* 5. Notes */}
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
               <Label className="text-sm font-bold text-card-foreground">Catatan (opsional)</Label>
