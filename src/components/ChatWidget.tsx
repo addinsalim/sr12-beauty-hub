@@ -16,8 +16,8 @@ const ChatWidget = () => {
   const [unread, setUnread] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Hide on admin routes & for admins themselves
-  if (isAdmin || location.pathname.startsWith('/admin') || !user) return null;
+  // Determine visibility AFTER all hooks (cannot return early before hooks)
+  const shouldHide = isAdmin || location.pathname.startsWith('/admin') || !user;
 
   const ensureThread = async () => {
     setLoading(true);
@@ -39,6 +39,7 @@ const ChatWidget = () => {
 
   // Realtime subscribe + load unread count
   useEffect(() => {
+    if (shouldHide || !user) return;
     let channel: any;
     (async () => {
       const { data: t } = await supabase.from('chat_threads').select('*').eq('user_id', user.id).maybeSingle();
@@ -60,7 +61,7 @@ const ChatWidget = () => {
       }
     })();
     return () => { if (channel) supabase.removeChannel(channel); };
-  }, [user.id, open]);
+  }, [shouldHide, user?.id, open]);
 
   useEffect(() => { if (open && !thread) ensureThread(); }, [open]);
 
@@ -82,6 +83,8 @@ const ChatWidget = () => {
     setSending(false);
     setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
   };
+
+  if (shouldHide) return null;
 
   return (
     <>
