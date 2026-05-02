@@ -86,6 +86,66 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          sender_id: string
+          sender_role: string
+          thread_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sender_id: string
+          sender_role: string
+          thread_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sender_id?: string
+          sender_role?: string
+          thread_id?: string
+        }
+        Relationships: []
+      }
+      chat_threads: {
+        Row: {
+          created_at: string
+          id: string
+          last_message: string | null
+          last_message_at: string | null
+          unread_admin: number
+          unread_user: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          unread_admin?: number
+          unread_user?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          unread_admin?: number
+          unread_user?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -275,6 +335,36 @@ export type Database = {
           },
         ]
       }
+      point_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string | null
+          reference: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          reference?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          reference?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_images: {
         Row: {
           created_at: string
@@ -331,7 +421,6 @@ export type Database = {
           name: string
           price: number
           rating: number | null
-          reseller_price: number
           review_count: number | null
           slug: string
           stock: number
@@ -351,7 +440,6 @@ export type Database = {
           name: string
           price?: number
           rating?: number | null
-          reseller_price?: number
           review_count?: number | null
           slug: string
           stock?: number
@@ -371,7 +459,6 @@ export type Database = {
           name?: string
           price?: number
           rating?: number | null
-          reseller_price?: number
           review_count?: number | null
           slug?: string
           stock?: number
@@ -418,39 +505,24 @@ export type Database = {
         }
         Relationships: []
       }
-      resellers: {
+      recently_viewed: {
         Row: {
-          approved_at: string | null
-          approved_by: string | null
-          code: string
-          created_at: string
           id: string
-          min_purchase: number | null
-          special_discount: number | null
-          status: string
+          product_id: string
           user_id: string
+          viewed_at: string
         }
         Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          code: string
-          created_at?: string
           id?: string
-          min_purchase?: number | null
-          special_discount?: number | null
-          status?: string
+          product_id: string
           user_id: string
+          viewed_at?: string
         }
         Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          code?: string
-          created_at?: string
           id?: string
-          min_purchase?: number | null
-          special_discount?: number | null
-          status?: string
+          product_id?: string
           user_id?: string
+          viewed_at?: string
         }
         Relationships: []
       }
@@ -482,6 +554,13 @@ export type Database = {
             columns: ["review_id"]
             isOneToOne: false
             referencedRelation: "reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_images_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews_public"
             referencedColumns: ["id"]
           },
         ]
@@ -572,6 +651,24 @@ export type Database = {
           },
         ]
       }
+      user_points: {
+        Row: {
+          balance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -637,6 +734,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      voucher_redemptions: {
+        Row: {
+          created_at: string
+          discount_amount: number
+          id: string
+          order_id: string | null
+          user_id: string
+          voucher_id: string
+        }
+        Insert: {
+          created_at?: string
+          discount_amount: number
+          id?: string
+          order_id?: string | null
+          user_id: string
+          voucher_id: string
+        }
+        Update: {
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          order_id?: string | null
+          user_id?: string
+          voucher_id?: string
+        }
+        Relationships: []
+      }
+      vouchers: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_discount: number | null
+          min_purchase: number
+          quota: number | null
+          used_count: number
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          id?: string
+          is_active?: boolean
+          max_discount?: number | null
+          min_purchase?: number
+          quota?: number | null
+          used_count?: number
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_discount?: number | null
+          min_purchase?: number
+          quota?: number | null
+          used_count?: number
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
+      wishlists: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -708,6 +901,33 @@ export type Database = {
           },
         ]
       }
+      reviews_public: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string | null
+          product_id: string | null
+          rating: number | null
+          reviewer_avatar: string | null
+          reviewer_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
@@ -716,6 +936,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      reduce_product_stock: {
+        Args: { p_product_id: string; p_quantity: number }
+        Returns: undefined
       }
       reduce_variant_stock: {
         Args: { p_quantity: number; p_variant_id: string }
@@ -727,7 +951,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "admin" | "reseller" | "customer" | "courier"
+      app_role: "owner" | "admin" | "customer" | "courier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -855,7 +1079,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "admin", "reseller", "customer", "courier"],
+      app_role: ["owner", "admin", "customer", "courier"],
     },
   },
 } as const

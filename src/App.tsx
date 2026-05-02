@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
+import { WishlistProvider } from "@/hooks/useWishlist";
 import MainLayout from "@/components/layout/MainLayout";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import Index from "./pages/Index";
@@ -29,6 +30,12 @@ import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
+import Profile from "./pages/Profile";
+import Wishlist from "./pages/Wishlist";
+import RecentlyViewed from "./pages/RecentlyViewed";
+import MyVouchers from "./pages/MyVouchers";
+import AdminVouchers from "./pages/admin/AdminVouchers";
+import AdminChat from "./pages/admin/AdminChat";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +44,7 @@ const App = () => (
     <I18nProvider>
       <AuthProvider>
         <CartProvider>
+          <WishlistProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -56,6 +64,10 @@ const App = () => (
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/change-password" element={<ChangePassword />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/wishlist" element={<Wishlist />} />
+                  <Route path="/recently-viewed" element={<RecentlyViewed />} />
+                  <Route path="/my-vouchers" element={<MyVouchers />} />
                 </Route>
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
@@ -64,12 +76,15 @@ const App = () => (
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="payments" element={<AdminPayments />} />
                   <Route path="shipments" element={<AdminShipments />} />
+                  <Route path="vouchers" element={<AdminVouchers />} />
+                  <Route path="chat" element={<AdminChat />} />
                   <Route path="reports" element={<AdminReports />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
+          </WishlistProvider>
         </CartProvider>
       </AuthProvider>
     </I18nProvider>

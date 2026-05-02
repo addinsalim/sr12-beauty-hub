@@ -4,7 +4,9 @@ import { ShoppingBag, Star, Shield, Award, Minus, Plus, Heart, Share2, Truck, Ar
 import { useI18n } from '@/lib/i18n';
 import { fetchProductBySlug, formatPrice } from '@/lib/supabaseHelpers';
 import { useCart } from '@/hooks/useCart';
+import { useWishlist } from '@/hooks/useWishlist';
 import { useToast } from '@/hooks/use-toast';
+import { trackRecentlyViewed } from '@/lib/recentlyViewed';
 import productParfum from '@/assets/product-parfum.png';
 import productSkincare from '@/assets/product-skincare.png';
 import productKosmetik from '@/assets/product-kosmetik.png';
@@ -21,6 +23,7 @@ const ProductDetail = () => {
   const { slug } = useParams();
   const { t } = useI18n();
   const { addItem } = useCart();
+  const { isInWishlist, toggle: toggleWishlist } = useWishlist();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [product, setProduct] = useState<any>(null);
@@ -33,7 +36,10 @@ const ProductDetail = () => {
     if (!slug) return;
     setLoading(true);
     fetchProductBySlug(slug)
-      .then(data => setProduct(data))
+      .then(data => {
+        setProduct(data);
+        if (data?.id) trackRecentlyViewed(data.id);
+      })
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
   }, [slug]);
@@ -253,8 +259,12 @@ const ProductDetail = () => {
                 Beli Sekarang
               </button>
               
-              <button className="flex h-12 w-12 items-center justify-center rounded-full glass border border-border/30 text-muted-foreground transition-all duration-300 hover:text-rose-gold hover:shadow-glow hover:scale-110 shrink-0">
-                <Heart className="h-5 w-5" />
+              <button
+                onClick={() => toggleWishlist(product.id, product.name)}
+                className={`flex h-12 w-12 items-center justify-center rounded-full glass border border-border/30 transition-all duration-300 hover:shadow-glow hover:scale-110 shrink-0 ${isInWishlist(product.id) ? 'text-rose-gold' : 'text-muted-foreground hover:text-rose-gold'}`}
+                aria-label="Wishlist"
+              >
+                <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
               </button>
               <button className="flex h-12 w-12 items-center justify-center rounded-full glass border border-border/30 text-muted-foreground transition-all duration-300 hover:text-foreground hover:shadow-glow hover:scale-110 shrink-0">
                 <Share2 className="h-5 w-5" />

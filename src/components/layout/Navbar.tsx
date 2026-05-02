@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound } from 'lucide-react';
+import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle, Heart, History, Ticket, Shield } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
+import { useWishlist } from '@/hooks/useWishlist';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ const Navbar = () => {
   const location = useLocation();
   const { user, isAdmin, profile, signOut } = useAuth();
   const { totalItems } = useCart();
+  const { count: wishlistCount } = useWishlist();
 
   const navLinks = [
     { href: '/', label: t.nav.home, icon: Home },
@@ -104,20 +106,30 @@ const Navbar = () => {
             {user ? (
               <div className="hidden items-center gap-2 sm:flex">
                 {isAdmin && (
-                  <Link to="/admin" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110">
-                    <LayoutDashboard className="h-5 w-5" />
+                  <Link to="/admin" className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-rose-gold text-primary-foreground px-3 py-1.5 text-xs font-semibold shadow-glow hover:scale-105 transition" title="Buka Admin Panel">
+                    <Shield className="h-3.5 w-3.5" /> Admin Panel
                   </Link>
                 )}
-                <Link to="/my-orders" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110">
+                <Link to="/wishlist" className="relative rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-rose-gold hover:scale-110" title="Wishlist">
+                  <Heart className="h-5 w-5" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 h-4 min-w-4 px-1 rounded-full bg-rose-gold text-[10px] font-bold text-white flex items-center justify-center">{wishlistCount}</span>
+                  )}
+                </Link>
+                <Link to="/my-orders" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110" title="Pesanan Saya">
                   <Package className="h-5 w-5" />
                 </Link>
-                <div className="flex items-center bg-secondary/50 rounded-full px-3 py-1 border border-border">
+                <Link to="/profile" className="flex items-center gap-2 bg-secondary/50 rounded-full pl-1 pr-3 py-1 border border-border hover:shadow-glow transition" title="Profil Saya">
+                  <span className="h-7 w-7 rounded-full overflow-hidden bg-primary/15 flex items-center justify-center text-primary text-xs font-bold">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      (profile?.full_name || user.email || 'U').slice(0, 1).toUpperCase()
+                    )}
+                  </span>
                   <span className="text-sm font-medium truncate max-w-[100px] text-foreground">{profile?.full_name || user.email?.split('@')[0]}</span>
-                </div>
-                <Link to="/change-password" className="rounded-full p-2 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground hover:scale-110" title="Ganti Password">
-                  <KeyRound className="h-5 w-5" />
                 </Link>
-                <button onClick={signOut} className="rounded-full p-2 text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 hover:scale-110">
+                <button onClick={signOut} className="rounded-full p-2 text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 hover:scale-110" title="Keluar">
                   <LogOut className="h-5 w-5" />
                 </button>
               </div>
@@ -207,12 +219,24 @@ const Navbar = () => {
               {user ? (
                 <>
                   {isAdmin && (
-                    <Link to="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
-                      <LayoutDashboard className="h-5 w-5 text-primary" /> Admin Dashboard
+                    <Link to="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-semibold text-primary-foreground bg-gradient-to-r from-primary to-rose-gold shadow-glow">
+                      <Shield className="h-5 w-5" /> Buka Admin Panel
                     </Link>
                   )}
+                  <Link to="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <UserCircle className="h-5 w-5 text-primary" /> Profil Saya
+                  </Link>
                   <Link to="/my-orders" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
                     <Package className="h-5 w-5 text-primary" /> Pesanan Saya
+                  </Link>
+                  <Link to="/wishlist" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <Heart className="h-5 w-5 text-rose-gold" /> Wishlist {wishlistCount > 0 && <span className="ml-auto text-xs bg-rose-gold text-white rounded-full px-2 py-0.5">{wishlistCount}</span>}
+                  </Link>
+                  <Link to="/recently-viewed" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <History className="h-5 w-5 text-primary" /> Terakhir Dilihat
+                  </Link>
+                  <Link to="/my-vouchers" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
+                    <Ticket className="h-5 w-5 text-primary" /> Voucher & Poin
                   </Link>
                   <Link to="/change-password" onClick={() => setIsOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-foreground hover:bg-secondary/50">
                     <KeyRound className="h-5 w-5 text-primary" /> Ganti Password

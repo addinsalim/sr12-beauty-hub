@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { MapPin, Truck, CreditCard, Plus, ArrowLeft, Package, Loader2, ShieldCheck, Wallet, QrCode } from 'lucide-react';
+import { MapPin, Truck, Plus, ArrowLeft, Package, Loader2, ShieldCheck, Ticket, Coins, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart, CartItem } from '@/hooks/useCart';
 import { formatPrice } from '@/lib/supabaseHelpers';
@@ -24,23 +24,6 @@ interface Address {
   is_default: boolean;
 }
 
-const PAYMENT_METHODS = [
-  {
-    id: 'midtrans',
-    label: 'Bayar Online',
-    description: 'Transfer Bank, Kartu Kredit, GoPay, OVO, DANA, QRIS & lainnya',
-    icon: <Wallet className="h-5 w-5" />,
-    badges: ['QRIS', 'GoPay', 'VA Bank', 'Kartu'],
-  },
-  {
-    id: 'cod',
-    label: 'COD (Bayar di Tempat)',
-    description: 'Bayar tunai saat paket tiba',
-    icon: <span className="text-xl">💵</span>,
-    badges: [],
-  },
-];
-
 const SHIPPING_COST = 20000;
 
 const Checkout = () => {
@@ -61,11 +44,18 @@ const Checkout = () => {
     full_address: '', city: '', province: '', postal_code: '', district: '',
   });
 
-  const [paymentMethod, setPaymentMethod] = useState('midtrans');
+  const paymentMethod = 'midtrans';
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const snapScriptLoaded = useRef(false);
+
+  // Voucher & points
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [availablePoints, setAvailablePoints] = useState(0);
+  const [usePoints, setUsePoints] = useState(0);
 
   // Load Midtrans Snap.js
   useEffect(() => {
@@ -109,9 +99,29 @@ const Checkout = () => {
       });
   }, [user]);
 
+  // Load points balance
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('user_points').select('balance').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setAvailablePoints(data?.balance || 0));
+  }, [user]);
+
   const subtotal = checkoutItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const shippingFee = subtotal >= 200000 ? 0 : SHIPPING_COST;
-  const total = subtotal + shippingFee;
+
+  // Calculate voucher discount
+  const voucherDiscount = (() => {
+    if (!appliedVoucher) return 0;
+    if (subtotal < appliedVoucher.min_purchase) return 0;
+    let d = appliedVoucher.discount_type === 'percent'
+      ? Math.floor(subtotal * appliedVoucher.discount_value / 100)
+      : appliedVoucher.discount_value;
+    if (appliedVoucher.max_discount) d = Math.min(d, appliedVoucher.max_discount);
+    return Math.min(d, subtotal);
+  })();
+
+  const pointsDiscount = Math.min(usePoints, availablePoints, subtotal - voucherDiscount);
+  const total = Math.max(0, subtotal + shippingFee - voucherDiscount - pointsDiscount);
 
   const handleAddAddress = async () => {
     if (!user) return;
@@ -131,9 +141,28 @@ const Checkout = () => {
     toast({ title: 'Alamat ditambahkan' });
   };
 
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherLoading(true);
+    const { data } = await supabase.from('vouchers').select('*')
+      .eq('code', voucherCode.trim().toUpperCase()).eq('is_active', true).maybeSingle();
+    setVoucherLoading(false);
+    if (!data) { toast({ title: 'Voucher tidak ditemukan', variant: 'destructive' }); return; }
+    if (data.valid_until && new Date(data.valid_until) < new Date()) {
+      toast({ title: 'Voucher kedaluwarsa', variant: 'destructive' }); return;
+    }
+    if (data.quota && data.used_count >= data.quota) {
+      toast({ title: 'Kuota voucher habis', variant: 'destructive' }); return;
+    }
+    if (subtotal < data.min_purchase) {
+      toast({ title: `Min. pembelian ${formatPrice(data.min_purchase)}`, variant: 'destructive' }); return;
+    }
+    setAppliedVoucher(data);
+    toast({ title: '✨ Voucher diterapkan!' });
+  };
+
   const openSnapPayment = async (orderId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('create-payment', {
         body: { order_id: orderId },
       });
@@ -148,18 +177,19 @@ const Checkout = () => {
       }
 
       window.snap.pay(snap_token, {
-        onSuccess: (result) => {
+        onSuccess: () => {
           if (!buyNowItem) clearCart();
           toast({ title: '✅ Pembayaran berhasil!', description: 'Pesanan Anda sedang diproses.' });
-          navigate(`/orders/${orderId}`, { replace: true });
+          setTimeout(() => navigate('/my-orders', { replace: true }), 1500);
         },
-        onPending: (result) => {
+        onPending: () => {
           if (!buyNowItem) clearCart();
-          toast({ title: '⏳ Menunggu pembayaran', description: 'Selesaikan pembayaran sebelum batas waktu.' });
+          toast({ title: '⏳ Menunggu pembayaran', description: 'Selesaikan pembayaran di halaman pesanan.' });
           navigate(`/orders/${orderId}`, { replace: true });
         },
-        onError: (result) => {
-          toast({ title: 'Pembayaran gagal', description: 'Silakan coba lagi.', variant: 'destructive' });
+        onError: () => {
+          toast({ title: 'Pembayaran gagal', description: 'Silakan coba lagi dari halaman pesanan.', variant: 'destructive' });
+          navigate(`/orders/${orderId}`, { replace: true });
         },
         onClose: () => {
           if (!buyNowItem) clearCart();
@@ -180,17 +210,15 @@ const Checkout = () => {
 
     setSubmitting(true);
     try {
-      // Langkah 1: Buat order
+      // Langkah 1: Buat order (harga & ongkir dihitung server-side)
       const res = await supabase.functions.invoke('create-order', {
         body: {
           items: checkoutItems.map(i => ({
             product_id: i.productId,
             variant_id: i.variantId || null,
             quantity: i.quantity,
-            price: i.price,
           })),
           address_id: selectedAddressId,
-          shipping_cost: shippingFee,
           payment_method: paymentMethod,
           notes: notes || undefined,
         },
@@ -217,12 +245,40 @@ const Checkout = () => {
 
       const orderId = result.order.id;
 
+      // Side-effects: catat voucher redemption, redeem poin, earn poin (1% subtotal)
+      try {
+        if (appliedVoucher && voucherDiscount > 0) {
+          await supabase.from('voucher_redemptions').insert({
+            voucher_id: appliedVoucher.id, user_id: user!.id,
+            order_id: orderId, discount_amount: voucherDiscount,
+          });
+        }
+        if (pointsDiscount > 0) {
+          await supabase.from('point_transactions').insert({
+            user_id: user!.id, amount: -pointsDiscount, type: 'redeem',
+            reference: `Tukar poin di order ${result.order.order_number}`, order_id: orderId,
+          });
+          await supabase.from('user_points').upsert({
+            user_id: user!.id, balance: availablePoints - pointsDiscount, updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+        }
+        const earned = Math.floor(subtotal * 0.01);
+        if (earned > 0) {
+          await supabase.from('point_transactions').insert({
+            user_id: user!.id, amount: earned, type: 'earn',
+            reference: `Reward order ${result.order.order_number}`, order_id: orderId,
+          });
+          await supabase.from('user_points').upsert({
+            user_id: user!.id, balance: (availablePoints - pointsDiscount) + earned, updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+        }
+      } catch (e) { console.warn('Voucher/poin side-effect:', e); }
+
       // Langkah 2: Buka Midtrans Snap jika bukan COD
       if (paymentMethod === 'midtrans') {
         setSubmitting(false);
         await openSnapPayment(orderId);
       } else {
-        // COD — langsung ke halaman pesanan
         if (!buyNowItem) clearCart();
         toast({ title: 'Pesanan berhasil!', description: `No. ${result.order.order_number}` });
         navigate(`/orders/${orderId}`, { replace: true });
@@ -349,50 +405,49 @@ const Checkout = () => {
               )}
             </section>
 
-            {/* 4. Payment Method */}
+            {/* 4. Payment Info (Midtrans only) */}
+            <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/30 px-3 py-2 text-xs text-green-700 dark:text-green-400">
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span>Pembayaran aman & terenkripsi oleh <strong>Midtrans</strong> — mendukung Transfer Bank, Kartu Kredit, GoPay, OVO, DANA, QRIS & lainnya</span>
+              </div>
+            </section>
+
+            {/* Voucher & Poin */}
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
               <h2 className="flex items-center gap-2 font-display text-base font-bold text-card-foreground mb-3">
-                <CreditCard className="h-5 w-5 text-primary" /> Metode Pembayaran
+                <Ticket className="h-5 w-5 text-primary" /> Voucher & Poin
               </h2>
-              <div className="space-y-3">
-                {PAYMENT_METHODS.map(pm => (
-                  <label
-                    key={pm.id}
-                    className={`flex cursor-pointer gap-3 rounded-xl border-2 p-4 transition-all duration-200 ${paymentMethod === pm.id
-                      ? 'border-primary bg-primary/5 shadow-sm'
-                      : 'border-border hover:border-primary/40'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      className="mt-1 accent-primary"
-                      checked={paymentMethod === pm.id}
-                      onChange={() => setPaymentMethod(pm.id)}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        {pm.icon}
-                        <span className="text-sm font-semibold text-card-foreground">{pm.label}</span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{pm.description}</p>
-                      {pm.badges.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {pm.badges.map(b => (
-                            <span key={b} className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{b}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                ))}
-              </div>
-
-              {/* Midtrans Security Badge */}
-              {paymentMethod === 'midtrans' && (
-                <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/30 px-3 py-2 text-xs text-green-700 dark:text-green-400">
-                  <ShieldCheck className="h-4 w-4 shrink-0" />
-                  <span>Pembayaran aman & terenkripsi oleh <strong>Midtrans</strong> — mitra resmi Bank Indonesia</span>
+              {appliedVoucher ? (
+                <div className="flex items-center justify-between rounded-lg border border-primary bg-primary/5 p-3">
+                  <div>
+                    <p className="text-sm font-bold text-primary">{appliedVoucher.code}</p>
+                    <p className="text-xs text-muted-foreground">Hemat {formatPrice(voucherDiscount)}</p>
+                  </div>
+                  <button onClick={() => { setAppliedVoucher(null); setVoucherCode(''); }} className="rounded-full p-1.5 hover:bg-destructive/10 text-destructive">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input value={voucherCode} onChange={e => setVoucherCode(e.target.value.toUpperCase())} placeholder="Masukkan kode voucher" />
+                  <Button onClick={applyVoucher} disabled={voucherLoading || !voucherCode.trim()} variant="outline">
+                    {voucherLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Pakai'}
+                  </Button>
+                </div>
+              )}
+              {availablePoints > 0 && (
+                <div className="mt-3 rounded-lg bg-secondary/40 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs flex items-center gap-1.5"><Coins className="h-4 w-4 text-primary" /> Saldo: <strong>{availablePoints.toLocaleString('id-ID')}</strong> poin</span>
+                    {usePoints > 0 && <button onClick={() => setUsePoints(0)} className="text-xs text-destructive">Batal</button>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input type="number" min={0} max={Math.min(availablePoints, subtotal - voucherDiscount)}
+                      value={usePoints || ''} onChange={e => setUsePoints(Math.max(0, Math.min(Number(e.target.value), availablePoints, subtotal - voucherDiscount)))}
+                      placeholder="Pakai poin" />
+                    <Button variant="outline" onClick={() => setUsePoints(Math.min(availablePoints, subtotal - voucherDiscount))}>Maks</Button>
+                  </div>
                 </div>
               )}
             </section>
@@ -420,12 +475,27 @@ const Checkout = () => {
                     : <span className="text-foreground font-medium">{formatPrice(shippingFee)}</span>
                   }
                 </div>
+                {voucherDiscount > 0 && (
+                  <div className="flex justify-between text-rose-gold">
+                    <span>Voucher ({appliedVoucher.code})</span>
+                    <span className="font-medium">−{formatPrice(voucherDiscount)}</span>
+                  </div>
+                )}
+                {pointsDiscount > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span>Poin ({pointsDiscount.toLocaleString('id-ID')})</span>
+                    <span className="font-medium">−{formatPrice(pointsDiscount)}</span>
+                  </div>
+                )}
               </div>
               <div className="my-4 border-t border-border" />
               <div className="flex justify-between text-base font-bold">
                 <span className="text-card-foreground">Total</span>
                 <span className="text-primary">{formatPrice(total)}</span>
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                + Reward {Math.floor(subtotal * 0.01).toLocaleString('id-ID')} poin
+              </p>
 
               {paymentMethod === 'midtrans' && (
                 <div className="mt-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400">
