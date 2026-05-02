@@ -45,50 +45,51 @@ const App = () => (
       <AuthProvider>
         <CartProvider>
           <WishlistProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route element={<MainLayout />}>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/products/:slug" element={<ProductDetail />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/my-orders" element={<MyOrders />} />
-                  <Route path="/orders/:id" element={<OrderDetail />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/change-password" element={<ChangePassword />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/wishlist" element={<Wishlist />} />
-                  <Route path="/recently-viewed" element={<RecentlyViewed />} />
-                  <Route path="/my-vouchers" element={<MyVouchers />} />
-                </Route>
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="products" element={<AdminProducts />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="payments" element={<AdminPayments />} />
-                  <Route path="shipments" element={<AdminShipments />} />
-                  <Route path="vouchers" element={<AdminVouchers />} />
-                  <Route path="chat" element={<AdminChat />} />
-                  <Route path="reports" element={<AdminReports />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route element={<MainLayout />}>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/products/:slug" element={<ProductDetail />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/my-orders" element={<MyOrders />} />
+                    <Route path="/orders/:id" element={<OrderDetail />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/change-password" element={<ChangePassword />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/wishlist" element={<Wishlist />} />
+                    <Route path="/recently-viewed" element={<RecentlyViewed />} />
+                    <Route path="/my-vouchers" element={<MyVouchers />} />
+                  </Route>
+                  <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="products" element={<AdminProducts />} />
+                    <Route path="orders" element={<AdminOrders />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="payments" element={<AdminPayments />} />
+                    <Route path="shipments" element={<AdminShipments />} />
+                    <Route path="vouchers" element={<AdminVouchers />} />
+                    <Route path="chat" element={<AdminChat />} />
+                    <Route path="reports" element={<AdminReports />} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
           </WishlistProvider>
         </CartProvider>
       </AuthProvider>
     </I18nProvider>
   </QueryClientProvider>
 );
+
 
 export default App;
