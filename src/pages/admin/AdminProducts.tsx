@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, ImagePlus, X, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, ImagePlus, X, Package, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPrice, fetchAllProducts, createProduct, updateProduct, deleteProduct, uploadProductImage, addProductImage, deleteProductImage, createVariant, deleteVariant, fetchCategories } from '@/lib/supabaseHelpers';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ const AdminProducts = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState('');
 
   // Form state
   const [form, setForm] = useState({
@@ -132,16 +133,47 @@ const AdminProducts = () => {
     }
   };
 
+  const filteredProducts = products.filter(p => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.categories?.name || '').toLowerCase().includes(q) ||
+      (p.slug || '').toLowerCase().includes(q)
+    );
+  });
+
   if (loading) return <div className="flex items-center justify-center py-20"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 justify-between">
         <h1 className="font-display text-2xl font-bold text-foreground">Kelola Produk</h1>
         <Button onClick={() => { resetForm(); setShowForm(true); }}>
           <Plus className="h-4 w-4 mr-1" /> Tambah Produk
         </Button>
       </div>
+
+      {/* Search */}
+      <div className="mb-4 relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          id="admin-products-search"
+          placeholder="Cari nama produk, kategori..."
+          className="pl-9 pr-9"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Menampilkan {filteredProducts.length} dari {products.length} produk
+        {search && <span className="ml-1">untuk "<strong>{search}</strong>"</span>}
+      </p>
 
       {/* Product Form Modal */}
       {showForm && (
@@ -222,7 +254,7 @@ const AdminProducts = () => {
 
       {/* Product List */}
       <div className="space-y-4">
-        {products.map(product => (
+        {filteredProducts.map(product => (
           <div key={product.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start gap-4">
               {/* Thumbnail */}
@@ -303,7 +335,7 @@ const AdminProducts = () => {
           </div>
         ))}
 
-        {products.length === 0 && (
+        {filteredProducts.length === 0 && (
           <div className="py-20 text-center text-muted-foreground">
             <Package className="mx-auto mb-3 h-12 w-12" />
             <p>Belum ada produk. Klik "Tambah Produk" untuk mulai.</p>
