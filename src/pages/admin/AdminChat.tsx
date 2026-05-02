@@ -85,16 +85,70 @@ const AdminChat = () => {
 
   return (
     <div>
-      <h1 className="mb-6 font-display text-2xl font-bold text-foreground">Pesan Customer</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[70vh]">
-        {/* Thread list */}
+      <h1 className="mb-4 font-display text-2xl font-bold text-foreground">Pesan Customer</h1>
+
+      {/* Mobile: show list OR conversation */}
+      <div className="block md:hidden">
+        {!activeId ? (
+          <div className="rounded-xl border border-border bg-card overflow-y-auto max-h-[75vh]">
+            {loading ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : threads.length === 0 ? (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                Belum ada percakapan
+              </div>
+            ) : threads.map(t => {
+              const p = profiles[t.user_id];
+              return (
+                <button key={t.id} onClick={() => openThread(t)}
+                  className="w-full text-left px-4 py-3 border-b border-border hover:bg-secondary/40 transition">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm text-foreground truncate">{p?.full_name || 'Customer'}</span>
+                    {t.unread_admin > 0 && <span className="h-5 min-w-5 px-1 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center">{t.unread_admin}</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{t.last_message || 'Belum ada pesan'}</p>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card flex flex-col" style={{ height: '75vh' }}>
+            <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center gap-2">
+              <button onClick={() => setActiveId(null)} className="mr-1 text-muted-foreground hover:text-foreground text-xs">← Kembali</button>
+              <UserIcon className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium truncate">{profiles[threads.find(t => t.id === activeId)?.user_id]?.full_name || 'Customer'}</span>
+            </div>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+              {messages.map(m => (
+                <div key={m.id} className={`flex ${m.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${m.sender_role === 'admin' ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-secondary text-foreground rounded-bl-sm'}`}>
+                    {m.message}
+                    <p className="text-[10px] opacity-60 mt-1">{new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 p-3 border-t border-border">
+              <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
+                placeholder="Balas pesan..." className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm outline-none" />
+              <button onClick={send} disabled={sending || !input.trim()}
+                className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50">
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: side by side */}
+      <div className="hidden md:grid md:grid-cols-3 gap-4 h-[70vh]">
         <div className="rounded-xl border border-border bg-card overflow-y-auto">
           {loading ? (
             <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : threads.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
-              <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              Belum ada percakapan
+              <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />Belum ada percakapan
             </div>
           ) : threads.map(t => {
             const p = profiles[t.user_id];
@@ -111,8 +165,6 @@ const AdminChat = () => {
             );
           })}
         </div>
-
-        {/* Conversation */}
         <div className="md:col-span-2 rounded-xl border border-border bg-card flex flex-col overflow-hidden">
           {!activeId ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
@@ -135,13 +187,8 @@ const AdminChat = () => {
                 ))}
               </div>
               <div className="flex items-center gap-2 p-3 border-t border-border">
-                <input
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && send()}
-                  placeholder="Balas pesan..."
-                  className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm outline-none"
-                />
+                <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
+                  placeholder="Balas pesan..." className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm outline-none" />
                 <button onClick={send} disabled={sending || !input.trim()}
                   className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50">
                   {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
