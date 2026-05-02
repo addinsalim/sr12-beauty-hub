@@ -24,7 +24,13 @@ const Products = () => {
   const filtered = useMemo(() => {
     let result = [...products];
     if (search) {
-      result = result.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+      const q = search.toLowerCase();
+      result = result.filter(p =>
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        (p.categories?.name || '').toLowerCase().includes(q) ||
+        (p.categories?.slug || '').toLowerCase().includes(q)
+      );
     }
     if (sortBy === 'price-low') result.sort((a, b) => Number(a.price) - Number(b.price));
     if (sortBy === 'price-high') result.sort((a, b) => Number(b.price) - Number(a.price));

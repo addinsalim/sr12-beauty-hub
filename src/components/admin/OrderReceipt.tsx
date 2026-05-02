@@ -1,12 +1,15 @@
 import { forwardRef } from 'react';
 import { formatPrice } from '@/lib/supabaseHelpers';
 
-interface OrderReceiptProps {
+interface PackingSlipProps {
   order: any;
 }
 
-// This component is designed to be printed — uses print-safe styling
-const OrderReceipt = forwardRef<HTMLDivElement, OrderReceiptProps>(({ order }, ref) => {
+/**
+ * Packing Slip / Struk Pesanan — untuk tim pack-packing
+ * Dicetak saat window.print() dipanggil, tersembunyi di layar normal
+ */
+const PackingSlip = forwardRef<HTMLDivElement, PackingSlipProps>(({ order }, ref) => {
   if (!order) return null;
 
   const address = order.addresses;
@@ -17,161 +20,253 @@ const OrderReceipt = forwardRef<HTMLDivElement, OrderReceiptProps>(({ order }, r
 
   const statusLabel: Record<string, string> = {
     pending_payment: 'Menunggu Pembayaran',
-    processing: 'Diproses',
-    shipped: 'Dikirim',
+    processing: 'Siap Dikemas',
+    shipped: 'Sudah Dikirim',
     completed: 'Selesai',
     cancelled: 'Dibatalkan',
   };
+
+  const now = new Date().toLocaleString('id-ID', {
+    day: '2-digit', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const orderDate = new Date(order.created_at).toLocaleString('id-ID', {
+    day: '2-digit', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 
   return (
     <div
       ref={ref}
       className="print-receipt"
-      style={{ display: 'none', width: '80mm', padding: '4mm', fontFamily: 'monospace', fontSize: '11px', backgroundColor: 'white', color: 'black' }}
+      style={{
+        display: 'none',
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '12px',
+        color: '#000',
+        backgroundColor: '#fff',
+        padding: '16px',
+        maxWidth: '210mm',
+      }}
     >
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '4mm' }}>
-        <div style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '2px' }}>SR12 BEAUTY HUB</div>
-        <div style={{ fontSize: '9px', marginTop: '1mm' }}>Toko Kecantikan Terpercaya</div>
-        <div style={{ fontSize: '9px' }}>www.sr12-beauty-hub.com</div>
-        <div style={{ borderTop: '1px dashed #000', margin: '3mm 0' }} />
+      {/* ══ HEADER ══ */}
+      <table style={{ width: '100%', borderBottom: '2px solid #000', paddingBottom: '8px', marginBottom: '12px' }}>
+        <tbody>
+          <tr>
+            <td>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '1px' }}>SR12 BEAUTY HUB</div>
+              <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>Toko Kecantikan Terpercaya • www.sr12-beauty-hub.com</div>
+            </td>
+            <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', border: '2px solid #000', padding: '4px 12px', display: 'inline-block' }}>
+                SURAT PACKING
+              </div>
+              <div style={{ fontSize: '10px', color: '#555', marginTop: '4px' }}>Cetak: {now}</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ══ INFO PESANAN ══ */}
+      <table style={{ width: '100%', marginBottom: '12px', borderCollapse: 'collapse' }}>
+        <tbody>
+          <tr>
+            <td style={{ width: '50%', verticalAlign: 'top', paddingRight: '16px' }}>
+              <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', paddingBottom: '3px', width: '110px' }}>No. Pesanan</td>
+                    <td style={{ fontWeight: 'bold', fontSize: '13px' }}>: {order.order_number}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingBottom: '3px' }}>Tanggal Order</td>
+                    <td>: {orderDate}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingBottom: '3px' }}>Status</td>
+                    <td>
+                      : <span style={{ fontWeight: 'bold', border: '1px solid #000', padding: '1px 6px' }}>
+                        {statusLabel[order.status] || order.status}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingBottom: '3px' }}>Pembayaran</td>
+                    <td>: {payment?.method?.toUpperCase() || '-'}{payment?.bank_name ? ` (${payment.bank_name})` : ''}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingBottom: '3px' }}>Status Bayar</td>
+                    <td>: <span style={{ fontWeight: 'bold' }}>{payment?.status === 'confirmed' ? '✓ LUNAS' : payment?.status === 'pending' ? 'BELUM LUNAS' : (payment?.status || '-')}</span></td>
+                  </tr>
+                  {shipment && (
+                    <>
+                      <tr>
+                        <td style={{ paddingBottom: '3px' }}>Kurir</td>
+                        <td>: <span style={{ fontWeight: 'bold' }}>{shipment.courier?.toUpperCase()}</span></td>
+                      </tr>
+                      <tr>
+                        <td style={{ paddingBottom: '3px' }}>No. Resi</td>
+                        <td>: <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{shipment.tracking_number}</span></td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </td>
+
+            <td style={{ width: '50%', verticalAlign: 'top' }}>
+              {/* Alamat tujuan dalam kotak */}
+              <div style={{ border: '2px solid #000', padding: '8px', height: '100%' }}>
+                <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  📦 Dikirim Kepada:
+                </div>
+                {address ? (
+                  <>
+                    <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{address.recipient_name}</div>
+                    <div style={{ marginTop: '2px' }}>📞 {address.phone}</div>
+                    <div style={{ marginTop: '4px', lineHeight: '1.5' }}>{address.full_address}</div>
+                    <div>{[address.district, address.city, address.province].filter(Boolean).join(', ')}</div>
+                    {address.postal_code && <div>Kode Pos: {address.postal_code}</div>}
+                  </>
+                ) : (
+                  <div style={{ color: '#888' }}>Alamat tidak tersedia</div>
+                )}
+                <div style={{ marginTop: '6px', fontSize: '10px', borderTop: '1px dashed #ccc', paddingTop: '4px' }}>
+                  Pengirim: SR12 BEAUTY HUB
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ══ DAFTAR PRODUK ══ */}
+      <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '4px', borderBottom: '1px solid #000', paddingBottom: '3px' }}>
+        DAFTAR PRODUK YANG DIKEMAS
       </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '11px' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#f0f0f0' }}>
+            <th style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center', width: '30px' }}>No</th>
+            <th style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'left' }}>Nama Produk</th>
+            <th style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center', width: '60px' }}>Varian</th>
+            <th style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center', width: '50px' }}>Qty</th>
+            <th style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', width: '90px' }}>Harga</th>
+            <th style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', width: '90px' }}>Subtotal</th>
+            <th style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center', width: '60px' }}>✓ Cek</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item: any, idx: number) => (
+            <tr key={item.id} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+              <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'center' }}>{idx + 1}</td>
+              <td style={{ border: '1px solid #ccc', padding: '6px 8px', fontWeight: 'bold' }}>
+                {item.products?.name || 'Produk'}
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'center', fontSize: '10px' }}>
+                {item.variants?.name || '-'}
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: '14px' }}>
+                {item.quantity}
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>
+                {formatPrice(Number(item.price))}
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>
+                {formatPrice(Number(item.total))}
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'center', fontSize: '16px' }}>
+                □
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-      {/* Order Info */}
-      <div style={{ marginBottom: '3mm' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>No. Pesanan</span>
-          <span style={{ fontWeight: 'bold' }}>{order.order_number}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Tanggal</span>
-          <span>{new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Status</span>
-          <span>{statusLabel[order.status] || order.status}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Pelanggan</span>
-          <span>{profile?.full_name || 'Customer'}</span>
-        </div>
-        {profile?.phone && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Telepon</span>
-            <span>{profile.phone}</span>
-          </div>
-        )}
-      </div>
+      {/* ══ RINGKASAN HARGA ══ */}
+      <table style={{ width: '100%', marginBottom: '16px' }}>
+        <tbody>
+          <tr>
+            <td style={{ width: '55%', verticalAlign: 'top', paddingRight: '12px' }}>
+              {/* Instruksi packing */}
+              <div style={{ border: '1px dashed #aaa', padding: '8px', fontSize: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>📋 INSTRUKSI PACKING:</div>
+                <div>□ Pastikan semua produk sesuai daftar</div>
+                <div>□ Periksa kondisi produk (tidak bocor/rusak)</div>
+                <div>□ Kemas dengan bubble wrap / kardus</div>
+                <div>□ Tempel label pengiriman dengan benar</div>
+                <div>□ Foto paket sebelum diserahkan kurir</div>
+                {order.notes && (
+                  <div style={{ marginTop: '6px', borderTop: '1px dashed #aaa', paddingTop: '4px', color: '#c00', fontWeight: 'bold' }}>
+                    ⚠️ Catatan: {order.notes}
+                  </div>
+                )}
+              </div>
+            </td>
+            <td style={{ width: '45%', verticalAlign: 'top' }}>
+              <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '3px 8px' }}>Subtotal Produk</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'right' }}>{formatPrice(Number(order.subtotal))}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '3px 8px' }}>Ongkos Kirim</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'right' }}>
+                      {Number(order.shipping_cost) === 0 ? 'GRATIS' : formatPrice(Number(order.shipping_cost))}
+                    </td>
+                  </tr>
+                  {order.discount_amount > 0 && (
+                    <tr>
+                      <td style={{ padding: '3px 8px', color: '#006600' }}>Diskon</td>
+                      <td style={{ padding: '3px 8px', textAlign: 'right', color: '#006600' }}>
+                        -{formatPrice(Number(order.discount_amount))}
+                      </td>
+                    </tr>
+                  )}
+                  <tr style={{ backgroundColor: '#000', color: '#fff' }}>
+                    <td style={{ padding: '5px 8px', fontWeight: 'bold', fontSize: '13px' }}>TOTAL</td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>
+                      {formatPrice(Number(order.total))}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <div style={{ borderTop: '1px dashed #000', margin: '3mm 0' }} />
+      {/* ══ TTD & FOOTER ══ */}
+      <table style={{ width: '100%', borderTop: '1px solid #ccc', paddingTop: '10px', marginTop: '10px', fontSize: '10px' }}>
+        <tbody>
+          <tr>
+            <td style={{ textAlign: 'center', width: '33%' }}>
+              <div>Dikemas oleh,</div>
+              <div style={{ height: '40px', borderBottom: '1px solid #000', margin: '6px 20px' }} />
+              <div>Nama & Tanda Tangan</div>
+            </td>
+            <td style={{ textAlign: 'center', width: '33%' }}>
+              <div>Diperiksa oleh,</div>
+              <div style={{ height: '40px', borderBottom: '1px solid #000', margin: '6px 20px' }} />
+              <div>Nama & Tanda Tangan</div>
+            </td>
+            <td style={{ textAlign: 'center', width: '33%' }}>
+              <div>Diserahkan ke Kurir,</div>
+              <div style={{ height: '40px', borderBottom: '1px solid #000', margin: '6px 20px' }} />
+              <div>Nama & Tanda Tangan</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      {/* Alamat */}
-      {address && (
-        <div style={{ marginBottom: '3mm' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>ALAMAT PENGIRIMAN</div>
-          <div>{address.recipient_name}</div>
-          <div>{address.phone}</div>
-          <div>{address.full_address}</div>
-          <div>{[address.district, address.city, address.province, address.postal_code].filter(Boolean).join(', ')}</div>
-        </div>
-      )}
-
-      <div style={{ borderTop: '1px dashed #000', margin: '3mm 0' }} />
-
-      {/* Items */}
-      <div style={{ marginBottom: '3mm' }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>PRODUK</div>
-        {items.map((item: any) => (
-          <div key={item.id} style={{ marginBottom: '2mm' }}>
-            <div style={{ wordBreak: 'break-word' }}>
-              {item.products?.name}
-              {item.variants?.name ? ` (${item.variants.name})` : ''}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>{item.quantity} x {formatPrice(Number(item.price))}</span>
-              <span>{formatPrice(Number(item.total))}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ borderTop: '1px dashed #000', margin: '3mm 0' }} />
-
-      {/* Totals */}
-      <div style={{ marginBottom: '3mm' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Subtotal</span>
-          <span>{formatPrice(Number(order.subtotal))}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Ongkos Kirim</span>
-          <span>{Number(order.shipping_cost) === 0 ? 'GRATIS' : formatPrice(Number(order.shipping_cost))}</span>
-        </div>
-        {order.discount_amount > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Diskon</span>
-            <span>-{formatPrice(Number(order.discount_amount))}</span>
-          </div>
-        )}
-        <div style={{ borderTop: '1px solid #000', margin: '2mm 0' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
-          <span>TOTAL</span>
-          <span>{formatPrice(Number(order.total))}</span>
-        </div>
-      </div>
-
-      <div style={{ borderTop: '1px dashed #000', margin: '3mm 0' }} />
-
-      {/* Payment */}
-      {payment && (
-        <div style={{ marginBottom: '3mm' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Pembayaran</span>
-            <span>{payment.method?.toUpperCase()}{payment.bank_name ? ` - ${payment.bank_name}` : ''}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Status Bayar</span>
-            <span>{payment.status}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Shipment */}
-      {shipment && (
-        <div style={{ marginBottom: '3mm' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Kurir</span>
-            <span>{shipment.courier?.toUpperCase()}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>No. Resi</span>
-            <span>{shipment.tracking_number}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Notes */}
-      {order.notes && (
-        <>
-          <div style={{ borderTop: '1px dashed #000', margin: '3mm 0' }} />
-          <div>
-            <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>CATATAN</div>
-            <div>{order.notes}</div>
-          </div>
-        </>
-      )}
-
-      <div style={{ borderTop: '1px dashed #000', margin: '3mm 0' }} />
-
-      {/* Footer */}
-      <div style={{ textAlign: 'center', fontSize: '9px' }}>
-        <div>Terima kasih telah berbelanja!</div>
-        <div>Dicetak: {new Date().toLocaleString('id-ID')}</div>
-        <div style={{ marginTop: '2mm' }}>★ SR12 Beauty Hub ★</div>
+      <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '9px', color: '#888', borderTop: '1px dashed #ddd', paddingTop: '6px' }}>
+        SR12 Beauty Hub — Dokumen ini dicetak otomatis dari sistem. Pelanggan: {profile?.full_name || 'Customer'} | Pesanan: {order.order_number}
       </div>
     </div>
   );
 });
 
-OrderReceipt.displayName = 'OrderReceipt';
-export default OrderReceipt;
+PackingSlip.displayName = 'PackingSlip';
+export default PackingSlip;
