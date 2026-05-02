@@ -1,18 +1,22 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { fetchProducts, formatPrice } from '@/lib/supabaseHelpers';
 import ProductCard from '@/components/ProductCard';
 
 const Products = () => {
   const { t } = useI18n();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const categoryFilter = searchParams.get('category');
-  const [search, setSearch] = useState('');
+  const urlQuery = searchParams.get('q') || '';
+  const [search, setSearch] = useState(urlQuery);
   const [sortBy, setSortBy] = useState('newest');
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Sync search box dengan URL param ?q=
+  useEffect(() => { setSearch(urlQuery); }, [urlQuery]);
 
   useEffect(() => {
     setLoading(true);
@@ -90,14 +94,34 @@ const Products = () => {
         <div className="mb-8 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
           {/* Search */}
           <div className="flex flex-1 items-center rounded-full glass px-4 py-2.5 sm:py-2.5 transition-all duration-300 focus-within:shadow-glow focus-within:ring-1 focus-within:ring-primary/30">
-            <Search className="mr-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="mr-2.5 h-4 w-4 text-muted-foreground shrink-0" />
             <input
               type="text"
               placeholder={t.nav.search}
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => {
+                setSearch(e.target.value);
+                // Update URL param live
+                const p = new URLSearchParams(searchParams);
+                if (e.target.value) p.set('q', e.target.value);
+                else p.delete('q');
+                setSearchParams(p, { replace: true });
+              }}
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch('');
+                  const p = new URLSearchParams(searchParams);
+                  p.delete('q');
+                  setSearchParams(p, { replace: true });
+                }}
+                className="ml-1 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">

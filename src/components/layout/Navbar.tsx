@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle, Heart, History, Ticket, Shield } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,11 +9,21 @@ import { useWishlist } from '@/hooks/useWishlist';
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { t, lang, setLang } = useI18n();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isAdmin, profile, signOut } = useAuth();
   const { totalItems } = useCart();
   const { count: wishlistCount } = useWishlist();
+
+  const handleSearch = (q: string) => {
+    if (!q.trim()) return;
+    navigate(`/products?q=${encodeURIComponent(q.trim())}`);
+    setIsSearchOpen(false);
+    setIsOpen(false);
+    setSearchQuery('');
+  };
 
   const navLinks = [
     { href: '/', label: t.nav.home, icon: Home },
@@ -77,11 +87,14 @@ const Navbar = () => {
                   <input
                     type="text"
                     placeholder={t.nav.search}
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
                     className="w-48 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                     autoFocus
-                    onBlur={() => setIsSearchOpen(false)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSearch(searchQuery); }}
+                    onBlur={() => { if (!searchQuery) setIsSearchOpen(false); }}
                   />
-                  <button onClick={() => setIsSearchOpen(false)}>
+                  <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}>
                     <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                   </button>
                 </div>
@@ -190,8 +203,16 @@ const Navbar = () => {
                 <input
                   type="text"
                   placeholder={t.nav.search}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  onKeyDown={e => { if (e.key === 'Enter') handleSearch(searchQuery); }}
                 />
+                {searchQuery && (
+                  <button onClick={() => handleSearch(searchQuery)} className="ml-1 text-primary text-xs font-medium">
+                    Cari
+                  </button>
+                )}
               </div>
             </div>
 
