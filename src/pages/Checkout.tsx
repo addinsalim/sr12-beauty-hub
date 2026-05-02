@@ -185,7 +185,7 @@ const Checkout = () => {
         body: {
           items: checkoutItems.map(i => ({
             product_id: i.productId,
-            variant_id: i.variantId,
+            variant_id: i.variantId || null,
             quantity: i.quantity,
             price: i.price,
           })),
@@ -196,7 +196,22 @@ const Checkout = () => {
         },
       });
 
-      if (res.error) throw new Error(res.error.message || 'Gagal membuat pesanan');
+      // Ekstrak pesan error asli dari response body
+      if (res.error) {
+        let errMsg = 'Gagal membuat pesanan';
+        try {
+          // FunctionsHttpError memiliki context dengan response asli
+          const ctx = (res.error as any).context;
+          if (ctx) {
+            const body = typeof ctx.json === 'function' ? await ctx.json() : ctx;
+            errMsg = body?.error || body?.message || res.error.message || errMsg;
+          } else {
+            errMsg = res.error.message || errMsg;
+          }
+        } catch { errMsg = res.error.message || errMsg; }
+        throw new Error(errMsg);
+      }
+
       const result = res.data;
       if (result?.error) throw new Error(result.error);
 
