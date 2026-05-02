@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, CreditCard, Truck, Printer, Loader2, Clock, ShieldCheck, XCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, CreditCard, Truck, Loader2, Clock, ShieldCheck, XCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatPrice } from '@/lib/supabaseHelpers';
@@ -31,7 +31,6 @@ const OrderDetail = () => {
   const [shipment, setShipment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [payingSnap, setPayingSnap] = useState(false);
-  const invoiceRef = useRef<HTMLDivElement>(null);
   const snapScriptLoaded = useRef(false);
 
   // Cancellation state
@@ -64,7 +63,6 @@ const OrderDetail = () => {
     load();
   }, [id, user]);
 
-  const handlePrint = () => window.print();
 
   // Load Midtrans Snap.js jika belum
   useEffect(() => {
@@ -195,22 +193,19 @@ const OrderDetail = () => {
       <div className="container mx-auto px-4 py-6 sm:py-10 max-w-3xl">
         <div className="flex items-center justify-between mb-6">
           <Link to="/my-orders" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
-          <div className="flex gap-2">
-            {canCancel && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                onClick={() => setShowCancelDialog(true)}
-              >
-                <XCircle className="mr-1 h-4 w-4" /> Batalkan
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="mr-1 h-4 w-4" /> Cetak</Button>
-          </div>
+          {canCancel && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive border-destructive/40 hover:bg-destructive/10"
+              onClick={() => setShowCancelDialog(true)}
+            >
+              <XCircle className="mr-1 h-4 w-4" /> Batalkan Pesanan
+            </Button>
+          )}
         </div>
 
-        <div ref={invoiceRef} className="space-y-5 print:space-y-3">
+        <div className="space-y-5">
           {/* Header */}
           <div className="rounded-xl border border-border bg-card p-5 print:border-0 print:p-0">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
