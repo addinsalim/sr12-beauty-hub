@@ -225,6 +225,13 @@ const AdminOrders = () => {
             const address = order.addresses;
             const profile = order.profile;
             const isCancellable = !['cancelled', 'completed'].includes(order.status);
+            // Boleh cetak hanya jika pesanan tidak dibatalkan DAN sudah dibayar
+            const canPrint = order.status !== 'cancelled' && order.status !== 'pending_payment';
+            const printTooltip = order.status === 'cancelled'
+              ? 'Tidak dapat mencetak struk pesanan yang dibatalkan'
+              : order.status === 'pending_payment'
+              ? 'Struk hanya tersedia setelah pesanan dibayar'
+              : 'Cetak struk pesanan';
 
             return (
               <div key={order.id} className="rounded-xl border border-border bg-card overflow-hidden">
@@ -251,9 +258,14 @@ const AdminOrders = () => {
                   {/* Quick action buttons */}
                   <div className="flex items-center gap-1 px-2 border-l border-border">
                     <button
-                      title="Cetak struk"
-                      onClick={() => handlePrint(order)}
-                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition"
+                      title={printTooltip}
+                      onClick={() => canPrint && handlePrint(order)}
+                      disabled={!canPrint}
+                      className={`p-2 rounded-lg transition ${
+                        canPrint
+                          ? 'text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer'
+                          : 'text-muted-foreground/30 cursor-not-allowed'
+                      }`}
                     >
                       <Printer className="h-4 w-4" />
                     </button>
@@ -374,9 +386,21 @@ const AdminOrders = () => {
                     )}
 
                     {/* Print & Cancel buttons in expanded view */}
-                    <div className="flex gap-2 pt-2 border-t border-border">
-                      <Button size="sm" variant="outline" onClick={() => handlePrint(order)}>
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handlePrint(order)}
+                        disabled={!canPrint}
+                        title={printTooltip}
+                        className="disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
                         <Printer className="h-3.5 w-3.5 mr-1.5" /> Cetak Struk
+                        {!canPrint && (
+                          <span className="ml-1.5 text-[10px] font-normal opacity-70">
+                            {order.status === 'cancelled' ? '(dibatalkan)' : '(belum dibayar)'}
+                          </span>
+                        )}
                       </Button>
                       {isCancellable && (
                         <Button
