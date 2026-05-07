@@ -6,7 +6,7 @@ import { useLocation } from 'react-router-dom';
 import { loadArSettings } from '@/pages/admin/AdminChat';
 
 const ChatWidget = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [thread, setThread] = useState<any>(null);
@@ -19,8 +19,12 @@ const ChatWidget = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null); // simpan channel agar cleanup aman
 
-  // Determine visibility AFTER all hooks (cannot return early before hooks)
-  const shouldHide = isAdmin || location.pathname.startsWith('/admin') || !user;
+  // Hanya tampil untuk customer:
+  // - Jangan tampil saat auth masih loading (cegah flash untuk admin)
+  // - Jangan tampil jika admin/owner
+  // - Jangan tampil di halaman admin
+  // - Jangan tampil jika belum login
+  const shouldHide = authLoading || isAdmin || location.pathname.startsWith('/admin') || !user;
 
   const ensureThread = async () => {
     if (!user) return;
