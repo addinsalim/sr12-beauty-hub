@@ -73,14 +73,15 @@ const ChatWidget = () => {
   useEffect(() => { if (open && !thread) ensureThread(); }, [open]);
 
   // Kirim auto-reply jika diaktifkan admin
-  const triggerAutoReply = async (threadId: string, isFirstMessage: boolean) => {
+  const triggerAutoReply = async (threadId: string, isFirstToday: boolean, todayKey: string) => {
     if (!user) return;
     try {
       // Baca settings dari localStorage (disimpan oleh AdminChat)
       const settings = loadArSettings();
 
       if (!settings.enabled) return;
-      if (settings.triggerMode === 'first_only' && !isFirstMessage) return;
+      // Mode 'first_only': hanya balas pesan pertama hari ini
+      if (settings.triggerMode === 'first_only' && !isFirstToday) return;
 
       const delaySec = (settings.delaySeconds ?? 1) * 1000;
 
@@ -116,6 +117,9 @@ const ChatWidget = () => {
           last_message_at: new Date().toISOString(),
           unread_user: 0,
         }).eq('id', threadId);
+
+        // Tandai hari ini sudah dikirim auto-reply untuk user ini
+        localStorage.setItem(todayKey, '1');
       }
       setIsTyping(false);
       setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
@@ -131,9 +135,10 @@ const ChatWidget = () => {
     const text = input.trim();
     setInput('');
 
-    // Cek apakah ini pesan pertama customer di thread ini
-    const customerMsgs = messages.filter(m => m.sender_role === 'customer');
-    const isFirstMessage = customerMsgs.length === 0;
+    // Cek apakah customer sudah pernah kirim pesan hari ini
+    // Key: sr12_ar_{userId}_{YYYY-MM-DD}  → unik per user per hari
+    const todayKey = `sr12_ar_${user.id}_${new Date().toISOString().slice(0, 10)}`;
+    const isFirstToday = !localStorage.getItem(todayKey);
 
     const { data, error } = await supabase.from('chat_messages').insert({
       thread_id: thread.id, sender_id: user.id, sender_role: 'customer', message: text,
@@ -145,8 +150,8 @@ const ChatWidget = () => {
         unread_admin: (thread.unread_admin || 0) + 1,
       }).eq('id', thread.id);
 
-      // Trigger auto-reply setelah pesan terkirim
-      triggerAutoReply(thread.id, isFirstMessage);
+      // Trigger auto-reply
+      triggerAutoReply(thread.id, isFirstToday, todayKey);
     }
     setSending(false);
     setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
