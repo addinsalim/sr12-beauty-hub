@@ -1,9 +1,41 @@
-import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, Send, Loader2, User as UserIcon, Bot, Settings, Save, ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { MessageCircle, Send, Loader2, Bot, Settings, Save, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, User as UserIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+
+// ── Kunci localStorage untuk pengaturan auto-reply ──────────────────
+const AR_STORAGE_KEY = 'sr12_auto_reply_settings';
+
+interface AutoReplySettings {
+  enabled: boolean;
+  message: string;
+  triggerMode: 'first_only' | 'always';
+  delaySeconds: number;
+}
+
+const DEFAULT_AR: AutoReplySettings = {
+  enabled: false,
+  message: 'Halo! Terima kasih sudah menghubungi SR12 Beauty Hub 🌸 Kami akan segera membalas pesan Anda. Apakah ada yang bisa kami bantu?',
+  triggerMode: 'first_only',
+  delaySeconds: 1,
+};
+
+function loadArSettings(): AutoReplySettings {
+  try {
+    const raw = localStorage.getItem(AR_STORAGE_KEY);
+    if (raw) return { ...DEFAULT_AR, ...JSON.parse(raw) };
+  } catch { /* ignore */ }
+  return { ...DEFAULT_AR };
+}
+
+function saveArSettings(s: AutoReplySettings) {
+  localStorage.setItem(AR_STORAGE_KEY, JSON.stringify(s));
+}
+
+// ── Ekspor helper agar ChatWidget bisa baca settings ────────────────
+export { loadArSettings };
 
 const AdminChat = () => {
   const { user } = useAuth();
@@ -17,52 +49,24 @@ const AdminChat = () => {
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // ── Auto-reply settings ──────────────────────────────────────────
+  // ── Auto-reply settings (localStorage) ──────────────────────────
   const [showSettings, setShowSettings] = useState(false);
-  const [arEnabled, setArEnabled] = useState(false);
-  const [arMessage, setArMessage] = useState('');
-  const [arTrigger, setArTrigger] = useState<'first_only' | 'always'>('first_only');
-  const [arDelay, setArDelay] = useState(1);
-  const [savingAr, setSavingAr] = useState(false);
+  const [arSettings, setArSettings] = useState<AutoReplySettings>(loadArSettings);
 
-  // Load auto-reply settings
-  const loadAutoReply = async () => {
-    const { data } = await supabase
-      .from('chat_auto_reply')
-      .select('*')
-      .eq('id', 'default')
-      .single();
-    if (data) {
-      setArEnabled(data.enabled);
-      setArMessage(data.message);
-      setArTrigger(data.trigger_mode as 'first_only' | 'always');
-      setArDelay(data.delay_seconds ?? 1);
-    }
+  const handleSaveAr = () => {
+    saveArSettings(arSettings);
+    toast({ title: '✓ Pengaturan auto-reply disimpan' });
   };
 
-  const saveAutoReply = async () => {
-    setSavingAr(true);
-    const { error } = await supabase
-      .from('chat_auto_reply')
-      .update({ enabled: arEnabled, message: arMessage, trigger_mode: arTrigger, delay_seconds: arDelay, updated_at: new Date().toISOString() })
-      .eq('id', 'default');
-    setSavingAr(false);
-    if (error) {
-      toast({ title: 'Gagal menyimpan', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: '✓ Pengaturan auto-reply disimpan' });
-    }
-  };
-
-  const toggleAr = async () => {
-    const newVal = !arEnabled;
-    setArEnabled(newVal);
-    await supabase.from('chat_auto_reply').update({ enabled: newVal, updated_at: new Date().toISOString() }).eq('id', 'default');
-    toast({ title: newVal ? '🟢 Auto-reply diaktifkan' : '⚫ Auto-reply dinonaktifkan' });
+  const handleToggleAr = () => {
+    const updated = { ...arSettings, enabled: !arSettings.enabled };
+    setArSettings(updated);
+    saveArSettings(updated);
+    toast({ title: updated.enabled ? '🟢 Auto-reply diaktifkan' : '⚫ Auto-reply dinonaktifkan' });
   };
 
   // ── Thread & messages ────────────────────────────────────────────
-  const loadThreads = async () => {
+  const loadThreads = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from('chat_threads').select('*').order('last_message_at', { ascending: false, nullsFirst: false });
     setThreads(data || []);
@@ -74,20 +78,17 @@ const AdminChat = () => {
       setProfiles(map);
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    loadThreads();
-    loadAutoReply();
   }, []);
 
-  // Realtime: refresh threads on any new message
+  useEffect(() => { loadThreads(); }, [loadThreads]);
+
+  // Realtime: refresh threads
   useEffect(() => {
     const ch = supabase.channel('admin-chat-threads')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_threads' }, () => loadThreads())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [loadThreads]);
 
   const openThread = async (t: any) => {
     setActiveId(t.id);
@@ -134,11 +135,10 @@ const AdminChat = () => {
     setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
   };
 
-  // ── Helper: render bubble pesan ──────────────────────────────────
+  // ── Render bubble ────────────────────────────────────────────────
   const renderBubble = (m: any) => {
     const isCustomer = m.sender_role === 'customer';
-    const isAuto = m.sender_role === 'auto';
-    const isAdmin = m.sender_role === 'admin';
+    const isAuto     = m.sender_role === 'auto';
     return (
       <div key={m.id} className={`flex ${isCustomer ? 'justify-start' : 'justify-end'}`}>
         <div className={`max-w-[70%] rounded-2xl px-3 py-2 text-sm ${
@@ -153,7 +153,7 @@ const AdminChat = () => {
               <Bot className="h-3 w-3" /> Pesan Otomatis
             </span>
           )}
-          {isAdmin && (
+          {!isCustomer && !isAuto && (
             <span className="block text-[10px] opacity-70 mb-0.5">Admin</span>
           )}
           {m.message}
@@ -165,27 +165,26 @@ const AdminChat = () => {
 
   return (
     <div>
+      {/* ── Header ── */}
       <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
         <h1 className="font-display text-2xl font-bold text-foreground">Pesan Customer</h1>
 
-        {/* Toggle + buka pengaturan */}
         <div className="flex items-center gap-2">
           {/* Quick toggle */}
           <button
-            onClick={toggleAr}
+            onClick={handleToggleAr}
             className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold border transition ${
-              arEnabled
+              arSettings.enabled
                 ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/20 dark:border-green-700 dark:text-green-400'
                 : 'bg-secondary border-border text-muted-foreground'
             }`}
-            title={arEnabled ? 'Auto-reply aktif — klik untuk nonaktifkan' : 'Auto-reply nonaktif — klik untuk aktifkan'}
           >
-            {arEnabled
+            {arSettings.enabled
               ? <><ToggleRight className="h-4 w-4" /> Auto-Reply ON</>
               : <><ToggleLeft className="h-4 w-4" /> Auto-Reply OFF</>
             }
           </button>
-          {/* Buka panel pengaturan */}
+
           <button
             onClick={() => setShowSettings(s => !s)}
             className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-primary hover:border-primary/40 transition"
@@ -205,17 +204,17 @@ const AdminChat = () => {
             <h2 className="font-semibold text-sm text-blue-800 dark:text-blue-300">Pengaturan Pesan Otomatis</h2>
           </div>
 
-          {/* Status */}
+          {/* Toggle switch */}
           <div className="flex items-center gap-3">
             <span className="text-sm text-foreground font-medium w-28">Status</span>
             <button
-              onClick={toggleAr}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${arEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+              onClick={handleToggleAr}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${arSettings.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${arEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${arSettings.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
-            <span className={`text-xs font-medium ${arEnabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
-              {arEnabled ? 'Aktif — pesan otomatis akan terkirim' : 'Nonaktif'}
+            <span className={`text-xs font-medium ${arSettings.enabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+              {arSettings.enabled ? 'Aktif' : 'Nonaktif'}
             </span>
           </div>
 
@@ -224,11 +223,17 @@ const AdminChat = () => {
             <span className="text-sm text-foreground font-medium w-28 pt-1">Kirim saat</span>
             <div className="flex flex-col gap-2">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="trigger" value="first_only" checked={arTrigger === 'first_only'} onChange={() => setArTrigger('first_only')} className="accent-primary" />
+                <input type="radio" name="trigger" value="first_only"
+                  checked={arSettings.triggerMode === 'first_only'}
+                  onChange={() => setArSettings(s => ({ ...s, triggerMode: 'first_only' }))}
+                  className="accent-primary" />
                 <span className="text-sm text-foreground">Hanya pesan pertama customer</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="trigger" value="always" checked={arTrigger === 'always'} onChange={() => setArTrigger('always')} className="accent-primary" />
+                <input type="radio" name="trigger" value="always"
+                  checked={arSettings.triggerMode === 'always'}
+                  onChange={() => setArSettings(s => ({ ...s, triggerMode: 'always' }))}
+                  className="accent-primary" />
                 <span className="text-sm text-foreground">Setiap pesan customer</span>
               </label>
             </div>
@@ -238,41 +243,38 @@ const AdminChat = () => {
           <div className="flex items-center gap-3">
             <span className="text-sm text-foreground font-medium w-28">Delay</span>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={10}
-                value={arDelay}
-                onChange={e => setArDelay(Number(e.target.value))}
+              <input type="number" min={0} max={10}
+                value={arSettings.delaySeconds}
+                onChange={e => setArSettings(s => ({ ...s, delaySeconds: Number(e.target.value) }))}
                 className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30"
               />
-              <span className="text-sm text-muted-foreground">detik setelah pesan masuk</span>
+              <span className="text-sm text-muted-foreground">detik</span>
             </div>
           </div>
 
-          {/* Pesan */}
+          {/* Teks pesan */}
           <div className="flex items-start gap-3">
             <span className="text-sm text-foreground font-medium w-28 pt-1">Teks pesan</span>
             <textarea
-              value={arMessage}
-              onChange={e => setArMessage(e.target.value)}
-              rows={4}
-              maxLength={500}
-              placeholder="Contoh: Halo! Terima kasih sudah menghubungi SR12 Beauty Hub 🌸..."
+              value={arSettings.message}
+              onChange={e => setArSettings(s => ({ ...s, message: e.target.value }))}
+              rows={4} maxLength={500}
+              placeholder="Tulis pesan otomatis di sini..."
               className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
+
           <div className="flex items-center justify-between">
-            <p className="text-[11px] text-muted-foreground">{arMessage.length}/500 karakter</p>
-            <Button size="sm" onClick={saveAutoReply} disabled={savingAr || !arMessage.trim()} className="gap-1.5">
-              {savingAr ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            <p className="text-[11px] text-muted-foreground">{arSettings.message.length}/500 karakter</p>
+            <Button size="sm" onClick={handleSaveAr} disabled={!arSettings.message.trim()} className="gap-1.5">
+              <Save className="h-3.5 w-3.5" />
               Simpan Pengaturan
             </Button>
           </div>
         </div>
       )}
 
-      {/* Mobile: show list OR conversation */}
+      {/* ── Mobile view ── */}
       <div className="block md:hidden">
         {!activeId ? (
           <div className="rounded-xl border border-border bg-card overflow-y-auto max-h-[75vh]">
@@ -280,8 +282,7 @@ const AdminChat = () => {
               <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : threads.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
-                <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                Belum ada percakapan
+                <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />Belum ada percakapan
               </div>
             ) : threads.map(t => {
               const p = profiles[t.user_id];
@@ -319,7 +320,7 @@ const AdminChat = () => {
         )}
       </div>
 
-      {/* Desktop: side by side */}
+      {/* ── Desktop view ── */}
       <div className="hidden md:grid md:grid-cols-3 gap-4 h-[70vh]">
         <div className="rounded-xl border border-border bg-card overflow-y-auto">
           {loading ? (
@@ -343,6 +344,7 @@ const AdminChat = () => {
             );
           })}
         </div>
+
         <div className="md:col-span-2 rounded-xl border border-border bg-card flex flex-col overflow-hidden">
           {!activeId ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
@@ -353,7 +355,7 @@ const AdminChat = () => {
               <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center gap-2">
                 <UserIcon className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">{profiles[threads.find(t => t.id === activeId)?.user_id]?.full_name || 'Customer'}</span>
-                {arEnabled && (
+                {arSettings.enabled && (
                   <span className="ml-auto flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-medium">
                     <Bot className="h-3 w-3" /> Auto-reply aktif
                   </span>

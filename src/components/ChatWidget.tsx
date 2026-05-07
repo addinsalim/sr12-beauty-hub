@@ -3,6 +3,7 @@ import { MessageCircle, X, Send, Loader2, Bot } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation } from 'react-router-dom';
+import { loadArSettings } from '@/pages/admin/AdminChat';
 
 const ChatWidget = () => {
   const { user, isAdmin } = useAuth();
@@ -71,19 +72,13 @@ const ChatWidget = () => {
   const triggerAutoReply = async (threadId: string, isFirstMessage: boolean) => {
     if (!user) return;
     try {
-      const { data: settings, error: settingsErr } = await supabase
-        .from('chat_auto_reply')
-        .select('enabled, message, trigger_mode, delay_seconds')
-        .eq('id', 'default')
-        .single();
+      // Baca settings dari localStorage (disimpan oleh AdminChat)
+      const settings = loadArSettings();
 
-      // Tabel belum dibuat di Supabase atau auto-reply nonaktif → diam saja
-      if (settingsErr || !settings?.enabled) return;
+      if (!settings.enabled) return;
+      if (settings.triggerMode === 'first_only' && !isFirstMessage) return;
 
-      // Cek trigger mode: 'first_only' hanya balas pesan pertama customer
-      if (settings.trigger_mode === 'first_only' && !isFirstMessage) return;
-
-      const delaySec = (settings.delay_seconds ?? 1) * 1000;
+      const delaySec = (settings.delaySeconds ?? 1) * 1000;
 
       // Tampilkan typing indicator
       setIsTyping(true);
@@ -91,16 +86,15 @@ const ChatWidget = () => {
 
       await new Promise(r => setTimeout(r, delaySec));
 
-      // Insert auto-reply — sender_id HARUS diisi (NOT NULL di DB + RLS)
-      // Gunakan user.id agar lolos RLS; sender_role='auto' membedakan secara tampilan
+      // Insert auto-reply — sender_id = user.id agar lolos NOT NULL & RLS
       const { data: autoMsg, error: insertErr } = await supabase
         .from('chat_messages')
         .insert({
           thread_id: threadId,
-          sender_id: user.id,   // ← wajib: DB NOT NULL & RLS auth.uid()
+          sender_id: user.id,
           sender_role: 'auto',
           message: settings.message,
-          is_read: true,        // ← langsung read karena chat sedang terbuka
+          is_read: true,
         })
         .select()
         .single();
@@ -122,7 +116,7 @@ const ChatWidget = () => {
       setIsTyping(false);
       setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
     } catch (e) {
-      console.error('[auto-reply] unexpected error:', e);
+      console.error('[auto-reply] error:', e);
       setIsTyping(false);
     }
   };
