@@ -154,18 +154,20 @@ const ChatWidget = () => {
     <>
       {/* Floating button */}
       {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="relative fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg hover:scale-110 transition flex items-center justify-center"
-          aria-label="Chat dengan admin"
-        >
-          <MessageCircle className="h-6 w-6" />
-          {unread > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center animate-pulse">
-              {unread}
-            </span>
-          )}
-        </button>
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            onClick={() => setOpen(true)}
+            className="relative h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg hover:scale-110 transition flex items-center justify-center"
+            aria-label="Chat dengan admin"
+          >
+            <MessageCircle className="h-6 w-6" />
+            {unread > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center animate-pulse">
+                {unread}
+              </span>
+            )}
+          </button>
+        </div>
       )}
 
       {/* Chat window */}
