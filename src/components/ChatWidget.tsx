@@ -20,6 +20,7 @@ const ChatWidget = () => {
   const shouldHide = isAdmin || location.pathname.startsWith('/admin') || !user;
 
   const ensureThread = async () => {
+    if (!user) return;
     setLoading(true);
     let { data: t } = await supabase.from('chat_threads').select('*').eq('user_id', user.id).maybeSingle();
     if (!t) {
@@ -66,7 +67,7 @@ const ChatWidget = () => {
   useEffect(() => { if (open && !thread) ensureThread(); }, [open]);
 
   const send = async () => {
-    if (!input.trim() || !thread) return;
+    if (!input.trim() || !thread || !user) return;
     setSending(true);
     const text = input.trim();
     setInput('');

@@ -6,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatPrice } from '@/lib/supabaseHelpers';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import '@/types/midtrans.d.ts';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending_payment: { label: 'Menunggu Pembayaran', color: 'bg-yellow-100 text-yellow-800' },

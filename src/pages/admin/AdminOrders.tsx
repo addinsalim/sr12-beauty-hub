@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Package, ChevronDown, Loader2, Truck, Search, Printer,
   XCircle, X, AlertTriangle,
@@ -40,9 +40,8 @@ const AdminOrders = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
 
-  // Print
+  // Print — modal preview struk
   const [printOrder, setPrintOrder] = useState<any>(null);
-  const receiptRef = useRef<HTMLDivElement>(null);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -162,12 +161,9 @@ const AdminOrders = () => {
     fetchOrders();
   };
 
-  // ── Print ─────────────────────────────────────────────────────────────────
+  // ── Print — buka modal preview struk ────────────────────────────────────
   const handlePrint = (order: any) => {
     setPrintOrder(order);
-    setTimeout(() => {
-      window.print();
-    }, 150);
   };
 
   return (
@@ -443,8 +439,10 @@ const AdminOrders = () => {
         </div>
       )}
 
-      {/* ── Hidden receipt for printing ── */}
-      <OrderReceipt ref={receiptRef} order={printOrder} />
+      {/* ── Modal Preview Struk ── */}
+      {printOrder && (
+        <OrderReceipt order={printOrder} onClose={() => setPrintOrder(null)} />
+      )}
     </div>
   );
 };
