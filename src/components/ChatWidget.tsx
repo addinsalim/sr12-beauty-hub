@@ -69,14 +69,16 @@ const ChatWidget = () => {
 
   // Kirim auto-reply jika diaktifkan admin
   const triggerAutoReply = async (threadId: string, isFirstMessage: boolean) => {
+    if (!user) return;
     try {
-      const { data: settings } = await supabase
+      const { data: settings, error: settingsErr } = await supabase
         .from('chat_auto_reply')
         .select('enabled, message, trigger_mode, delay_seconds')
         .eq('id', 'default')
         .single();
 
-      if (!settings?.enabled) return;
+      // Tabel belum dibuat di Supabase atau auto-reply nonaktif → diam saja
+      if (settingsErr || !settings?.enabled) return;
 
       // Cek trigger mode: 'first_only' hanya balas pesan pertama customer
       if (settings.trigger_mode === 'first_only' && !isFirstMessage) return;
@@ -89,26 +91,38 @@ const ChatWidget = () => {
 
       await new Promise(r => setTimeout(r, delaySec));
 
-      // Kirim pesan auto-reply
-      const { data: autoMsg } = await supabase.from('chat_messages').insert({
-        thread_id: threadId,
-        sender_id: null,
-        sender_role: 'auto',
-        message: settings.message,
-        is_read: false,
-      }).select().single();
+      // Insert auto-reply — sender_id HARUS diisi (NOT NULL di DB + RLS)
+      // Gunakan user.id agar lolos RLS; sender_role='auto' membedakan secara tampilan
+      const { data: autoMsg, error: insertErr } = await supabase
+        .from('chat_messages')
+        .insert({
+          thread_id: threadId,
+          sender_id: user.id,   // ← wajib: DB NOT NULL & RLS auth.uid()
+          sender_role: 'auto',
+          message: settings.message,
+          is_read: true,        // ← langsung read karena chat sedang terbuka
+        })
+        .select()
+        .single();
+
+      if (insertErr) {
+        console.error('[auto-reply] gagal insert:', insertErr.message);
+        setIsTyping(false);
+        return;
+      }
 
       if (autoMsg) {
         setMessages(prev => [...prev, autoMsg]);
         await supabase.from('chat_threads').update({
           last_message: settings.message,
           last_message_at: new Date().toISOString(),
-          unread_user: 0, // auto-reply sudah dibaca karena chat terbuka
+          unread_user: 0,
         }).eq('id', threadId);
       }
       setIsTyping(false);
       setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
     } catch (e) {
+      console.error('[auto-reply] unexpected error:', e);
       setIsTyping(false);
     }
   };
