@@ -16,6 +16,7 @@ const ChatWidget = () => {
   const [unread, setUnread] = useState(0);
   const [isTyping, setIsTyping] = useState(false); // typing indicator auto-reply
   const scrollRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<any>(null); // simpan channel agar cleanup aman
 
   // Determine visibility AFTER all hooks (cannot return early before hooks)
   const shouldHide = isAdmin || location.pathname.startsWith('/admin') || !user;
@@ -31,8 +32,8 @@ const ChatWidget = () => {
     setThread(t);
     const { data: msgs } = await supabase.from('chat_messages').select('*').eq('thread_id', t!.id).order('created_at');
     setMessages(msgs || []);
-    // mark admin's messages as read
-    await supabase.from('chat_messages').update({ is_read: true }).eq('thread_id', t!.id).eq('sender_role', 'admin').eq('is_read', false);
+    // mark admin's & auto messages as read
+    await supabase.from('chat_messages').update({ is_read: true }).eq('thread_id', t!.id).in('sender_role', ['admin', 'auto']).eq('is_read', false);
     await supabase.from('chat_threads').update({ unread_user: 0 }).eq('id', t!.id);
     setUnread(0);
     setLoading(false);
@@ -42,12 +43,11 @@ const ChatWidget = () => {
   // Realtime subscribe + load unread count
   useEffect(() => {
     if (shouldHide || !user) return;
-    let channel: any;
     (async () => {
       const { data: t } = await supabase.from('chat_threads').select('*').eq('user_id', user.id).maybeSingle();
       if (t) {
         setUnread(t.unread_user || 0);
-        channel = supabase.channel(`thread-${t.id}`)
+        channelRef.current = supabase.channel(`thread-${t.id}`)
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `thread_id=eq.${t.id}` }, (payload) => {
             const m = payload.new as any;
             if (m.sender_role === 'admin' || m.sender_role === 'auto') {
@@ -62,7 +62,7 @@ const ChatWidget = () => {
           .subscribe();
       }
     })();
-    return () => { if (channel) supabase.removeChannel(channel); };
+    return () => { if (channelRef.current) supabase.removeChannel(channelRef.current); };
   }, [shouldHide, user?.id, open]);
 
   useEffect(() => { if (open && !thread) ensureThread(); }, [open]);
@@ -148,7 +148,7 @@ const ChatWidget = () => {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg hover:scale-110 transition flex items-center justify-center"
+          className="relative fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg hover:scale-110 transition flex items-center justify-center"
           aria-label="Chat dengan admin"
         >
           <MessageCircle className="h-6 w-6" />
