@@ -1,13 +1,147 @@
-import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { MessageCircle, X, Send, Loader2, Bot, Sparkles, LogIn } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { useLocation } from 'react-router-dom';
-import { loadArSettings } from '@/pages/admin/AdminChat';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+// ─── Chatbot Knowledge Base ──────────────────────────────────────────────────
+
+const BOT_NAME = 'Bella';
+const BOT_DELAY_MS = 1200;
+
+interface BotResponse {
+  reply: string;
+  quickReplies?: string[];
+}
+
+const DEFAULT_QUICK_REPLIES = [
+  'Cara Order 🛍️',
+  'Info Produk 💄',
+  'Status Pesanan 📦',
+  'Promo & Voucher 🎁',
+];
+
+function getBotReply(userMessage: string): BotResponse {
+  const msg = userMessage.toLowerCase();
+
+  // Greeting
+  if (/halo|hai|hi|hello|hey|selamat|apa kabar|assalamu|pagi|siang|sore|malam|hei/.test(msg)) {
+    return {
+      reply: `Halo! 👋 Saya **${BOT_NAME}**, asisten virtual SR12 Beauty Hub.\n\nAda yang bisa saya bantu hari ini?`,
+      quickReplies: DEFAULT_QUICK_REPLIES,
+    };
+  }
+
+  // Produk
+  if (/produk|sr12|skincare|cream|krim|serum|moisturizer|toner|sabun|rangkaian|perawatan|kulit|facial|lotion|sunscreen/.test(msg)) {
+    return {
+      reply: `SR12 Beauty Hub menyediakan rangkaian skincare berkualitas tinggi! 🌿\n\nKoleksi kami meliputi:\n• Facial Wash\n• Toner\n• Serum\n• Moisturizer\n• Sunscreen\n\nLihat semua produk di halaman **Produk**. Ada yang ingin ditanyakan?`,
+      quickReplies: ['Cara Order 🛍️', 'Info Harga 💰', 'Cara Pakai', 'Hubungi CS 📞'],
+    };
+  }
+
+  // Cara order
+  if (/pesan|order|beli|cara order|pembelian|checkout|keranjang|cart|bagaimana beli/.test(msg)) {
+    return {
+      reply: `Cara berbelanja di SR12 Beauty Hub sangat mudah! 🛍️\n\n1️⃣ Pilih produk yang diinginkan\n2️⃣ Klik **Tambah ke Keranjang**\n3️⃣ Buka halaman **Cart**\n4️⃣ Klik **Checkout**\n5️⃣ Isi alamat pengiriman\n6️⃣ Pilih metode pembayaran\n7️⃣ Selesaikan pembayaran ✅\n\nPesananmu langsung diproses! 🎉`,
+      quickReplies: ['Metode Pembayaran 💳', 'Info Pengiriman 🚚', 'Pakai Voucher 🎁'],
+    };
+  }
+
+  // Pengiriman
+  if (/ongkir|pengiriman|kirim|ekspedisi|tracking|resi|estimasi|lama|tiba|sampai|jne|jnt|sicepat|pos/.test(msg)) {
+    return {
+      reply: `Info pengiriman SR12 Beauty Hub 🚚\n\n• **Ekspedisi**: JNE, J&T, SiCepat, Pos Indonesia\n• **Estimasi**: 2–5 hari kerja\n• **Tracking**: Cek resi di halaman **Pesanan Saya**\n• **Gratis ongkir** untuk pembelian di atas nominal tertentu\n\nAda pertanyaan lain?`,
+      quickReplies: ['Status Pesanan 📦', 'Ganti Alamat', 'Hubungi CS 📞'],
+    };
+  }
+
+  // Voucher / promo
+  if (/voucher|diskon|promo|kode|kupon|potongan|cashback|hemat|gratis/.test(msg)) {
+    return {
+      reply: `Info voucher & promo SR12 Beauty Hub 🎁\n\n• Lihat voucher di halaman **Voucher Saya**\n• Masukkan kode voucher saat **Checkout**\n• Promo terbaru selalu update di halaman utama\n\n💡 Daftarkan akun untuk mendapatkan voucher selamat datang!`,
+      quickReplies: ['Cara Pakai Voucher', 'Cara Order 🛍️', 'Info Produk 💄'],
+    };
+  }
+
+  // Pembayaran
+  if (/bayar|payment|pembayaran|transfer|midtrans|metode|kartu|kredit|debit|gopay|ovo|dana|qris|cod|virtual account|va/.test(msg)) {
+    return {
+      reply: `Metode pembayaran SR12 Beauty Hub 💳\n\n• **Transfer Bank** (BCA, BNI, BRI, Mandiri)\n• **E-Wallet** (GoPay, OVO, Dana, ShopeePay)\n• **QRIS**\n• **Kartu Kredit/Debit**\n\n🔒 Pembayaran aman via Midtrans yang terpercaya.`,
+      quickReplies: ['Cara Order 🛍️', 'Bayar Gagal?', 'Info Pengiriman 🚚'],
+    };
+  }
+
+  // Bayar gagal
+  if (/gagal|tidak bisa bayar|error bayar|pembayaran gagal/.test(msg)) {
+    return {
+      reply: `Maaf ada kendala pembayaran! 😥 Berikut langkah yang bisa dicoba:\n\n1️⃣ Refresh halaman dan coba ulang\n2️⃣ Pastikan saldo/limit mencukupi\n3️⃣ Coba metode pembayaran lain\n4️⃣ Hubungi CS kami jika masih gagal\n\n📞 WA CS: **+62 811-xxx-xxxx**`,
+      quickReplies: ['Hubungi CS 📞', 'Metode Pembayaran 💳'],
+    };
+  }
+
+  // Retur / komplain
+  if (/retur|komplain|refund|rusak|salah|kecewa|keluhan|problem|masalah|tidak sesuai|cacat|pecah/.test(msg)) {
+    return {
+      reply: `Kami mohon maaf atas ketidaknyamanannya! 🙏\n\nLangkah pengajuan retur/komplain:\n1️⃣ Foto kondisi produk yang bermasalah\n2️⃣ Pastikan produk masih dalam kondisi asli\n3️⃣ Hubungi CS kami via WhatsApp\n4️⃣ Tim kami akan segera membantu\n\n📞 WA CS: **+62 811-xxx-xxxx**`,
+      quickReplies: ['Hubungi WhatsApp 📱', 'Status Pesanan 📦'],
+    };
+  }
+
+  // Kontak / jam operasional
+  if (/kontak|contact|whatsapp|wa|hubungi|telepon|phone|email|jam|buka|tutup|operasional|layanan|cs/.test(msg)) {
+    return {
+      reply: `Informasi kontak SR12 Beauty Hub 📞\n\n• **WhatsApp**: +62 811-xxx-xxxx\n• **Email**: cs@sr12beautyhub.com\n• **Instagram**: @sr12beautyhub\n• **Jam Layanan**: Senin–Sabtu, 08.00–17.00 WIB\n\n💬 Respons tercepat via WhatsApp!`,
+      quickReplies: ['Hubungi WhatsApp 📱', 'Cara Order 🛍️', 'Info Produk 💄'],
+    };
+  }
+
+  // Status pesanan
+  if (/status|cek|lacak|track|pesanan saya|order saya|mana pesanan|belum sampai|sudah bayar/.test(msg)) {
+    return {
+      reply: `Cara cek status pesanan 📦\n\n1️⃣ Login ke akun SR12 Beauty Hub\n2️⃣ Buka halaman **Pesanan Saya**\n3️⃣ Pilih pesanan yang ingin dicek\n4️⃣ Gunakan nomor resi untuk tracking di website ekspedisi\n\nAda kendala? Hubungi CS kami! 😊`,
+      quickReplies: ['Info Pengiriman 🚚', 'Hubungi CS 📞'],
+    };
+  }
+
+  // Ganti alamat
+  if (/ganti alamat|ubah alamat|salah alamat|edit alamat/.test(msg)) {
+    return {
+      reply: `Untuk mengubah alamat pengiriman 🏠\n\n• Jika pesanan **belum diproses**: hubungi CS kami segera\n• Jika pesanan **sudah dikirim**: sayangnya alamat tidak bisa diubah\n\nSaran: Cek ulang alamat sebelum konfirmasi checkout ya! ✅\n\n📞 WA CS: **+62 811-xxx-xxxx**`,
+      quickReplies: ['Hubungi CS 📞', 'Status Pesanan 📦'],
+    };
+  }
+
+  // Terima kasih
+  if (/terima kasih|makasih|thanks|thank you|tq|thx|mantap|bagus|oke banget|helpful/.test(msg)) {
+    return {
+      reply: `Sama-sama! 😊✨ Senang bisa membantu kamu.\n\nJika ada pertanyaan lain, saya selalu siap. Selamat berbelanja di SR12 Beauty Hub! 🌸`,
+      quickReplies: DEFAULT_QUICK_REPLIES,
+    };
+  }
+
+  // Pamit
+  if (/bye|dadah|pamit|selesai|sudah|cukup|gitu aja|sampai jumpa/.test(msg)) {
+    return {
+      reply: `Terima kasih sudah menghubungi SR12 Beauty Hub! 🌸\n\nSampai jumpa lagi! Jangan lupa kunjungi kami kembali. 👋`,
+      quickReplies: ['Info Produk 💄', 'Cara Order 🛍️'],
+    };
+  }
+
+  // Fallback
+  return {
+    reply: `Maaf, saya belum bisa menjawab pertanyaan itu. 😅\n\nSilakan hubungi CS kami untuk bantuan lebih lanjut:\n• **WhatsApp**: +62 811-xxx-xxxx\n• **Jam Layanan**: Senin–Sabtu 08.00–17.00 WIB\n\nAtau coba tanyakan dengan kata kunci lain!`,
+    quickReplies: ['Cara Order 🛍️', 'Info Produk 💄', 'Hubungi CS 📞', 'Info Pengiriman 🚚'],
+  };
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 const ChatWidget = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
   const [open, setOpen] = useState(false);
   const [thread, setThread] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -15,161 +149,198 @@ const ChatWidget = () => {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [unread, setUnread] = useState(0);
-  const [isTyping, setIsTyping] = useState(false); // typing indicator auto-reply
+  const [isTyping, setIsTyping] = useState(false);
+  const [quickReplies, setQuickReplies] = useState<string[]>(DEFAULT_QUICK_REPLIES);
+
   const scrollRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<any>(null); // simpan channel agar cleanup aman
+  const channelRef = useRef<any>(null);
 
-  // Hanya tampil untuk customer:
-  // - Jangan tampil saat auth masih loading (cegah flash untuk admin)
-  // - Jangan tampil jika admin/owner
-  // - Jangan tampil di halaman admin
-  // - Jangan tampil jika belum login
-  const shouldHide = authLoading || isAdmin || location.pathname.startsWith('/admin') || !user;
+  const isOnAdminPage = location.pathname.startsWith('/admin');
+  const shouldHideCompletely = authLoading || isAdmin || isOnAdminPage;
+  const isLoggedIn = !!user;
 
-  const ensureThread = async () => {
+  const scrollToBottom = () =>
+    setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
+
+  // ── Muat thread & pesan ─────────────────────────────────────────────
+  const ensureThread = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    let { data: t } = await supabase.from('chat_threads').select('*').eq('user_id', user.id).maybeSingle();
+    let { data: t } = await supabase
+      .from('chat_threads')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     if (!t) {
-      const { data: created } = await supabase.from('chat_threads').insert({ user_id: user.id }).select().single();
+      const { data: created } = await supabase
+        .from('chat_threads')
+        .insert({ user_id: user.id })
+        .select()
+        .single();
       t = created;
     }
+
     setThread(t);
-    const { data: msgs } = await supabase.from('chat_messages').select('*').eq('thread_id', t!.id).order('created_at');
+    const { data: msgs } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('thread_id', t!.id)
+      .order('created_at');
     setMessages(msgs || []);
-    // mark admin's & auto messages as read
-    await supabase.from('chat_messages').update({ is_read: true }).eq('thread_id', t!.id).in('sender_role', ['admin', 'auto']).eq('is_read', false);
+
+    await supabase
+      .from('chat_messages')
+      .update({ is_read: true })
+      .eq('thread_id', t!.id)
+      .in('sender_role', ['admin', 'auto'])
+      .eq('is_read', false);
     await supabase.from('chat_threads').update({ unread_user: 0 }).eq('id', t!.id);
+
     setUnread(0);
     setLoading(false);
-    setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
-  };
+    scrollToBottom();
+  }, [user]);
 
-  // Realtime subscribe + load unread count
+  // ── Realtime subscribe ──────────────────────────────────────────────
   useEffect(() => {
-    if (shouldHide || !user) return;
+    if (shouldHideCompletely || !user) return;
     (async () => {
-      const { data: t } = await supabase.from('chat_threads').select('*').eq('user_id', user.id).maybeSingle();
+      const { data: t } = await supabase
+        .from('chat_threads')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
       if (t) {
         setUnread(t.unread_user || 0);
-        channelRef.current = supabase.channel(`thread-${t.id}`)
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `thread_id=eq.${t.id}` }, (payload) => {
-            const m = payload.new as any;
-            if (m.sender_role === 'admin' || m.sender_role === 'auto') {
-              if (open) {
-                setMessages(prev => [...prev, m]);
-                supabase.from('chat_messages').update({ is_read: true }).eq('id', m.id).then(() => {});
-              } else {
-                setUnread(u => u + 1);
+        channelRef.current = supabase
+          .channel(`thread-${t.id}`)
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `thread_id=eq.${t.id}` },
+            (payload) => {
+              const m = payload.new as any;
+              if (m.sender_role === 'admin') {
+                if (open) {
+                  setMessages((prev) => [...prev, m]);
+                  supabase.from('chat_messages').update({ is_read: true }).eq('id', m.id).then(() => {});
+                } else {
+                  setUnread((u) => u + 1);
+                }
               }
-            }
-          })
+            },
+          )
           .subscribe();
       }
     })();
-    return () => { if (channelRef.current) supabase.removeChannel(channelRef.current); };
-  }, [shouldHide, user?.id, open]);
+    return () => {
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+    };
+  }, [shouldHideCompletely, user?.id, open]);
 
-  useEffect(() => { if (open && !thread) ensureThread(); }, [open]);
+  useEffect(() => {
+    if (open && !thread && user) ensureThread();
+  }, [open, thread, user, ensureThread]);
 
-  // Kirim auto-reply jika diaktifkan admin
-  const triggerAutoReply = async (threadId: string, isFirstToday: boolean, todayKey: string) => {
+  // ── Bot reply ───────────────────────────────────────────────────────
+  const triggerBotReply = async (threadId: string, userText: string) => {
     if (!user) return;
-    try {
-      // Baca settings dari localStorage (disimpan oleh AdminChat)
-      const settings = loadArSettings();
+    const { reply, quickReplies: qr } = getBotReply(userText);
 
-      if (!settings.enabled) return;
-      // Mode 'first_only': hanya balas pesan pertama hari ini
-      if (settings.triggerMode === 'first_only' && !isFirstToday) return;
+    setIsTyping(true);
+    scrollToBottom();
 
-      const delaySec = (settings.delaySeconds ?? 1) * 1000;
+    await new Promise((r) => setTimeout(r, BOT_DELAY_MS));
 
-      // Tampilkan typing indicator
-      setIsTyping(true);
-      setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
+    const { data: botMsg, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        thread_id: threadId,
+        sender_id: user.id,
+        sender_role: 'auto',
+        message: reply,
+        is_read: true,
+      })
+      .select()
+      .single();
 
-      await new Promise(r => setTimeout(r, delaySec));
-
-      // Insert auto-reply — sender_id = user.id agar lolos NOT NULL & RLS
-      const { data: autoMsg, error: insertErr } = await supabase
-        .from('chat_messages')
-        .insert({
-          thread_id: threadId,
-          sender_id: user.id,
-          sender_role: 'auto',
-          message: settings.message,
-          is_read: true,
-        })
-        .select()
-        .single();
-
-      if (insertErr) {
-        console.error('[auto-reply] gagal insert:', insertErr.message);
-        setIsTyping(false);
-        return;
-      }
-
-      if (autoMsg) {
-        setMessages(prev => [...prev, autoMsg]);
-        await supabase.from('chat_threads').update({
-          last_message: settings.message,
-          last_message_at: new Date().toISOString(),
-          unread_user: 0,
-        }).eq('id', threadId);
-
-        // Tandai hari ini sudah dikirim auto-reply untuk user ini
-        localStorage.setItem(todayKey, '1');
-      }
-      setIsTyping(false);
-      setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
-    } catch (e) {
-      console.error('[auto-reply] error:', e);
-      setIsTyping(false);
+    if (!error && botMsg) {
+      setMessages((prev) => [...prev, botMsg]);
+      await supabase.from('chat_threads').update({
+        last_message: reply,
+        last_message_at: new Date().toISOString(),
+        unread_user: 0,
+      }).eq('id', threadId);
     }
+
+    setIsTyping(false);
+    if (qr) setQuickReplies(qr);
+    scrollToBottom();
   };
 
-  const send = async () => {
-    if (!input.trim() || !thread || !user) return;
+  // ── Kirim pesan ─────────────────────────────────────────────────────
+  const send = async (text?: string) => {
+    const messageText = (text || input).trim();
+    if (!messageText || !thread || !user) return;
+
     setSending(true);
-    const text = input.trim();
     setInput('');
 
-    // Cek apakah customer sudah pernah kirim pesan hari ini
-    // Key: sr12_ar_{userId}_{YYYY-MM-DD}  → unik per user per hari
-    const todayKey = `sr12_ar_${user.id}_${new Date().toISOString().slice(0, 10)}`;
-    const isFirstToday = !localStorage.getItem(todayKey);
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        thread_id: thread.id,
+        sender_id: user.id,
+        sender_role: 'customer',
+        message: messageText,
+      })
+      .select()
+      .single();
 
-    const { data, error } = await supabase.from('chat_messages').insert({
-      thread_id: thread.id, sender_id: user.id, sender_role: 'customer', message: text,
-    }).select().single();
     if (!error && data) {
-      setMessages(prev => [...prev, data]);
+      setMessages((prev) => [...prev, data]);
       await supabase.from('chat_threads').update({
-        last_message: text, last_message_at: new Date().toISOString(),
+        last_message: messageText,
+        last_message_at: new Date().toISOString(),
         unread_admin: (thread.unread_admin || 0) + 1,
       }).eq('id', thread.id);
 
-      // Trigger auto-reply
-      triggerAutoReply(thread.id, isFirstToday, todayKey);
+      triggerBotReply(thread.id, messageText);
     }
+
     setSending(false);
-    setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
+    scrollToBottom();
   };
 
-  if (shouldHide) return null;
+  const handleQuickReply = (qr: string) => {
+    if (!isLoggedIn) return;
+    send(qr);
+  };
+
+  // ── Helper render teks dengan **bold** ──────────────────────────────
+  const renderText = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) =>
+      part.startsWith('**') && part.endsWith('**')
+        ? <strong key={i}>{part.slice(2, -2)}</strong>
+        : <span key={i}>{part}</span>
+    );
+  };
+
+  if (shouldHideCompletely) return null;
 
   return (
     <>
-      {/* Floating button */}
+      {/* ── Floating button ── */}
       {!open && (
         <div className="fixed bottom-6 right-6 z-40">
           <button
+            id="chat-widget-toggle"
             onClick={() => setOpen(true)}
-            className="relative h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg hover:scale-110 transition flex items-center justify-center"
-            aria-label="Chat dengan admin"
+            className="relative h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg hover:scale-110 transition-transform flex items-center justify-center"
+            aria-label="Buka chatbot"
           >
-            <MessageCircle className="h-6 w-6" />
+            <Bot className="h-6 w-6" />
             {unread > 0 && (
               <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center animate-pulse">
                 {unread}
@@ -179,79 +350,162 @@ const ChatWidget = () => {
         </div>
       )}
 
-      {/* Chat window */}
+      {/* ── Chat window ── */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-40 w-[90vw] sm:w-96 h-[70vh] sm:h-[500px] rounded-2xl glass-strong shadow-glow-lg flex flex-col overflow-hidden border border-border/40">
-          <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground">
-            <div>
-              <p className="font-semibold text-sm">SR12 Customer Service</p>
-              <p className="text-xs opacity-80">Biasanya membalas dalam 1 jam</p>
+        <div className="fixed bottom-6 right-6 z-40 w-[92vw] sm:w-96 h-[75vh] sm:h-[540px] rounded-2xl glass-strong shadow-glow-lg flex flex-col overflow-hidden border border-border/40">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <Bot className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm flex items-center gap-1">
+                  {BOT_NAME}
+                  <Sparkles className="h-3 w-3 opacity-80" />
+                </p>
+                <p className="text-xs opacity-75">Asisten Virtual SR12</p>
+              </div>
             </div>
-            <button onClick={() => setOpen(false)}><X className="h-5 w-5" /></button>
-          </div>
-
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-background/30">
-            {loading ? (
-              <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : messages.length === 0 ? (
-              <div className="text-center text-xs text-muted-foreground py-10">
-                <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                Halo! Ada yang bisa kami bantu? 👋
-              </div>
-            ) : (
-              messages.map(m => (
-                <div key={m.id} className={`flex ${m.sender_role === 'customer' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
-                    m.sender_role === 'customer'
-                      ? 'bg-primary text-primary-foreground rounded-br-sm'
-                      : m.sender_role === 'auto'
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-foreground rounded-bl-sm'
-                      : 'bg-secondary text-foreground rounded-bl-sm'
-                  }`}>
-                    {/* Badge auto-reply */}
-                    {m.sender_role === 'auto' && (
-                      <span className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                        <Bot className="h-3 w-3" /> Pesan Otomatis
-                      </span>
-                    )}
-                    {m.message}
-                    <p className="text-[10px] opacity-60 mt-1">{new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
-                  </div>
-                </div>
-              ))
-            )}
-
-            {/* Typing indicator */}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-blue-100 dark:bg-blue-900/40 rounded-2xl rounded-bl-sm px-4 py-3">
-                  <div className="flex gap-1 items-center">
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 p-3 border-t border-border/40 bg-card/50">
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && send()}
-              placeholder="Tulis pesan..."
-              className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              disabled={sending || isTyping}
-            />
-            <button
-              onClick={send}
-              disabled={sending || !input.trim() || isTyping}
-              className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50 hover:scale-105 transition"
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <button onClick={() => setOpen(false)} aria-label="Tutup chat">
+              <X className="h-5 w-5" />
             </button>
           </div>
+
+          {/* Body messages */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-background/30">
+            {/* Unauthenticated state */}
+            {!isLoggedIn ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-4">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Bot className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-foreground">Halo! Saya {BOT_NAME} 👋</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Login dulu untuk mulai chat dengan asisten virtual kami.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setOpen(false); navigate('/login'); }}
+                  className="flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-5 py-2 text-sm font-semibold hover:opacity-90 transition"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Login Sekarang
+                </button>
+              </div>
+            ) : loading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <>
+                {/* Welcome banner jika belum ada pesan */}
+                {messages.length === 0 && (
+                  <div className="text-center py-4">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                      <Bot className="h-6 w-6 text-primary" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">Halo! Saya {BOT_NAME} 👋</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Asisten virtual SR12 Beauty Hub.<br />Tanyakan apa saja!
+                    </p>
+                  </div>
+                )}
+
+                {/* Pesan */}
+                {messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`flex ${m.sender_role === 'customer' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {m.sender_role !== 'customer' && (
+                      <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center mr-2 mt-1 shrink-0">
+                        {m.sender_role === 'admin'
+                          ? <span className="text-[10px] font-bold text-primary">A</span>
+                          : <Bot className="h-3.5 w-3.5 text-primary" />
+                        }
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm whitespace-pre-line ${
+                        m.sender_role === 'customer'
+                          ? 'bg-primary text-primary-foreground rounded-br-sm'
+                          : m.sender_role === 'auto'
+                          ? 'bg-card border border-border/60 text-foreground rounded-bl-sm'
+                          : 'bg-secondary text-foreground rounded-bl-sm'
+                      }`}
+                    >
+                      {m.sender_role === 'admin' && (
+                        <span className="block text-[10px] font-semibold text-primary mb-0.5">Admin</span>
+                      )}
+                      <span className="leading-relaxed">{renderText(m.message)}</span>
+                      <p className="text-[10px] opacity-50 mt-1">
+                        {new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Typing indicator */}
+                {isTyping && (
+                  <div className="flex justify-start items-end gap-2">
+                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Bot className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div className="bg-card border border-border/60 rounded-2xl rounded-bl-sm px-4 py-3">
+                      <div className="flex gap-1 items-center">
+                        <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '160ms' }} />
+                        <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '320ms' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Quick Reply chips */}
+          {isLoggedIn && !loading && !isTyping && (
+            <div className="px-3 py-2 flex gap-2 overflow-x-auto scrollbar-hide border-t border-border/30 shrink-0 bg-background/20">
+              {quickReplies.map((qr) => (
+                <button
+                  key={qr}
+                  onClick={() => handleQuickReply(qr)}
+                  disabled={sending}
+                  className="shrink-0 rounded-full border border-primary/40 bg-primary/5 hover:bg-primary/15 text-primary text-xs px-3 py-1.5 transition whitespace-nowrap"
+                >
+                  {qr}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          {isLoggedIn && (
+            <div className="flex items-center gap-2 p-3 border-t border-border/40 bg-card/50 shrink-0">
+              <input
+                id="chat-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
+                placeholder="Tulis pesan..."
+                className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                disabled={sending || isTyping}
+                autoComplete="off"
+              />
+              <button
+                onClick={() => send()}
+                disabled={sending || !input.trim() || isTyping}
+                className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 hover:scale-105 transition-transform"
+                aria-label="Kirim pesan"
+              >
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>
