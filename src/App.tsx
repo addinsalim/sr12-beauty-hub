@@ -36,6 +36,7 @@ import RecentlyViewed from "./pages/RecentlyViewed";
 import MyVouchers from "./pages/MyVouchers";
 import AdminVouchers from "./pages/admin/AdminVouchers";
 import AdminChat from "./pages/admin/AdminChat";
+import AdminBotSettings from "./pages/admin/AdminBotSettings";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
                     <Route path="shipments" element={<AdminShipments />} />
                     <Route path="vouchers" element={<AdminVouchers />} />
                     <Route path="chat" element={<AdminChat />} />
+                    <Route path="bot-settings" element={<AdminBotSettings />} />
                     <Route path="reports" element={<AdminReports />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />

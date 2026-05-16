@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Users, ShoppingCart, CreditCard,
-  Truck, BarChart3, LogOut, Ticket, MessageCircle, Store, Menu, X,
+  Truck, BarChart3, LogOut, Ticket, MessageCircle, Store, Menu, X, BotMessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -14,7 +14,8 @@ const sidebarLinks = [
   { href: '/admin/payments', label: 'Pembayaran', icon: CreditCard },
   { href: '/admin/shipments', label: 'Pengiriman', icon: Truck },
   { href: '/admin/vouchers', label: 'Voucher', icon: Ticket },
-  { href: '/admin/chat', label: 'Pesan', icon: MessageCircle },
+  { href: '/admin/chat', label: 'Pesan Customer', icon: MessageCircle },
+  { href: '/admin/bot-settings', label: 'Pengaturan Bot', icon: BotMessageSquare },
   { href: '/admin/reports', label: 'Laporan', icon: BarChart3 },
 ];
 

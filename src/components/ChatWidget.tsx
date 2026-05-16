@@ -3,137 +3,7 @@ import { MessageCircle, X, Send, Loader2, Bot, Sparkles, LogIn } from 'lucide-re
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation, useNavigate } from 'react-router-dom';
-
-// ─── Chatbot Knowledge Base ──────────────────────────────────────────────────
-
-const BOT_NAME = 'Bella';
-const BOT_DELAY_MS = 1200;
-
-interface BotResponse {
-  reply: string;
-  quickReplies?: string[];
-}
-
-const DEFAULT_QUICK_REPLIES = [
-  'Cara Order 🛍️',
-  'Info Produk 💄',
-  'Status Pesanan 📦',
-  'Promo & Voucher 🎁',
-];
-
-function getBotReply(userMessage: string): BotResponse {
-  const msg = userMessage.toLowerCase();
-
-  // Greeting
-  if (/halo|hai|hi|hello|hey|selamat|apa kabar|assalamu|pagi|siang|sore|malam|hei/.test(msg)) {
-    return {
-      reply: `Halo! 👋 Saya **${BOT_NAME}**, asisten virtual SR12 Beauty Hub.\n\nAda yang bisa saya bantu hari ini?`,
-      quickReplies: DEFAULT_QUICK_REPLIES,
-    };
-  }
-
-  // Produk
-  if (/produk|sr12|skincare|cream|krim|serum|moisturizer|toner|sabun|rangkaian|perawatan|kulit|facial|lotion|sunscreen/.test(msg)) {
-    return {
-      reply: `SR12 Beauty Hub menyediakan rangkaian skincare berkualitas tinggi! 🌿\n\nKoleksi kami meliputi:\n• Facial Wash\n• Toner\n• Serum\n• Moisturizer\n• Sunscreen\n\nLihat semua produk di halaman **Produk**. Ada yang ingin ditanyakan?`,
-      quickReplies: ['Cara Order 🛍️', 'Info Harga 💰', 'Cara Pakai', 'Hubungi CS 📞'],
-    };
-  }
-
-  // Cara order
-  if (/pesan|order|beli|cara order|pembelian|checkout|keranjang|cart|bagaimana beli/.test(msg)) {
-    return {
-      reply: `Cara berbelanja di SR12 Beauty Hub sangat mudah! 🛍️\n\n1️⃣ Pilih produk yang diinginkan\n2️⃣ Klik **Tambah ke Keranjang**\n3️⃣ Buka halaman **Cart**\n4️⃣ Klik **Checkout**\n5️⃣ Isi alamat pengiriman\n6️⃣ Pilih metode pembayaran\n7️⃣ Selesaikan pembayaran ✅\n\nPesananmu langsung diproses! 🎉`,
-      quickReplies: ['Metode Pembayaran 💳', 'Info Pengiriman 🚚', 'Pakai Voucher 🎁'],
-    };
-  }
-
-  // Pengiriman
-  if (/ongkir|pengiriman|kirim|ekspedisi|tracking|resi|estimasi|lama|tiba|sampai|jne|jnt|sicepat|pos/.test(msg)) {
-    return {
-      reply: `Info pengiriman SR12 Beauty Hub 🚚\n\n• **Ekspedisi**: JNE, J&T, SiCepat, Pos Indonesia\n• **Estimasi**: 2–5 hari kerja\n• **Tracking**: Cek resi di halaman **Pesanan Saya**\n• **Gratis ongkir** untuk pembelian di atas nominal tertentu\n\nAda pertanyaan lain?`,
-      quickReplies: ['Status Pesanan 📦', 'Ganti Alamat', 'Hubungi CS 📞'],
-    };
-  }
-
-  // Voucher / promo
-  if (/voucher|diskon|promo|kode|kupon|potongan|cashback|hemat|gratis/.test(msg)) {
-    return {
-      reply: `Info voucher & promo SR12 Beauty Hub 🎁\n\n• Lihat voucher di halaman **Voucher Saya**\n• Masukkan kode voucher saat **Checkout**\n• Promo terbaru selalu update di halaman utama\n\n💡 Daftarkan akun untuk mendapatkan voucher selamat datang!`,
-      quickReplies: ['Cara Pakai Voucher', 'Cara Order 🛍️', 'Info Produk 💄'],
-    };
-  }
-
-  // Pembayaran
-  if (/bayar|payment|pembayaran|transfer|midtrans|metode|kartu|kredit|debit|gopay|ovo|dana|qris|cod|virtual account|va/.test(msg)) {
-    return {
-      reply: `Metode pembayaran SR12 Beauty Hub 💳\n\n• **Transfer Bank** (BCA, BNI, BRI, Mandiri)\n• **E-Wallet** (GoPay, OVO, Dana, ShopeePay)\n• **QRIS**\n• **Kartu Kredit/Debit**\n\n🔒 Pembayaran aman via Midtrans yang terpercaya.`,
-      quickReplies: ['Cara Order 🛍️', 'Bayar Gagal?', 'Info Pengiriman 🚚'],
-    };
-  }
-
-  // Bayar gagal
-  if (/gagal|tidak bisa bayar|error bayar|pembayaran gagal/.test(msg)) {
-    return {
-      reply: `Maaf ada kendala pembayaran! 😥 Berikut langkah yang bisa dicoba:\n\n1️⃣ Refresh halaman dan coba ulang\n2️⃣ Pastikan saldo/limit mencukupi\n3️⃣ Coba metode pembayaran lain\n4️⃣ Hubungi CS kami jika masih gagal\n\n📞 WA CS: **+62 811-xxx-xxxx**`,
-      quickReplies: ['Hubungi CS 📞', 'Metode Pembayaran 💳'],
-    };
-  }
-
-  // Retur / komplain
-  if (/retur|komplain|refund|rusak|salah|kecewa|keluhan|problem|masalah|tidak sesuai|cacat|pecah/.test(msg)) {
-    return {
-      reply: `Kami mohon maaf atas ketidaknyamanannya! 🙏\n\nLangkah pengajuan retur/komplain:\n1️⃣ Foto kondisi produk yang bermasalah\n2️⃣ Pastikan produk masih dalam kondisi asli\n3️⃣ Hubungi CS kami via WhatsApp\n4️⃣ Tim kami akan segera membantu\n\n📞 WA CS: **+62 811-xxx-xxxx**`,
-      quickReplies: ['Hubungi WhatsApp 📱', 'Status Pesanan 📦'],
-    };
-  }
-
-  // Kontak / jam operasional
-  if (/kontak|contact|whatsapp|wa|hubungi|telepon|phone|email|jam|buka|tutup|operasional|layanan|cs/.test(msg)) {
-    return {
-      reply: `Informasi kontak SR12 Beauty Hub 📞\n\n• **WhatsApp**: +62 811-xxx-xxxx\n• **Email**: cs@sr12beautyhub.com\n• **Instagram**: @sr12beautyhub\n• **Jam Layanan**: Senin–Sabtu, 08.00–17.00 WIB\n\n💬 Respons tercepat via WhatsApp!`,
-      quickReplies: ['Hubungi WhatsApp 📱', 'Cara Order 🛍️', 'Info Produk 💄'],
-    };
-  }
-
-  // Status pesanan
-  if (/status|cek|lacak|track|pesanan saya|order saya|mana pesanan|belum sampai|sudah bayar/.test(msg)) {
-    return {
-      reply: `Cara cek status pesanan 📦\n\n1️⃣ Login ke akun SR12 Beauty Hub\n2️⃣ Buka halaman **Pesanan Saya**\n3️⃣ Pilih pesanan yang ingin dicek\n4️⃣ Gunakan nomor resi untuk tracking di website ekspedisi\n\nAda kendala? Hubungi CS kami! 😊`,
-      quickReplies: ['Info Pengiriman 🚚', 'Hubungi CS 📞'],
-    };
-  }
-
-  // Ganti alamat
-  if (/ganti alamat|ubah alamat|salah alamat|edit alamat/.test(msg)) {
-    return {
-      reply: `Untuk mengubah alamat pengiriman 🏠\n\n• Jika pesanan **belum diproses**: hubungi CS kami segera\n• Jika pesanan **sudah dikirim**: sayangnya alamat tidak bisa diubah\n\nSaran: Cek ulang alamat sebelum konfirmasi checkout ya! ✅\n\n📞 WA CS: **+62 811-xxx-xxxx**`,
-      quickReplies: ['Hubungi CS 📞', 'Status Pesanan 📦'],
-    };
-  }
-
-  // Terima kasih
-  if (/terima kasih|makasih|thanks|thank you|tq|thx|mantap|bagus|oke banget|helpful/.test(msg)) {
-    return {
-      reply: `Sama-sama! 😊✨ Senang bisa membantu kamu.\n\nJika ada pertanyaan lain, saya selalu siap. Selamat berbelanja di SR12 Beauty Hub! 🌸`,
-      quickReplies: DEFAULT_QUICK_REPLIES,
-    };
-  }
-
-  // Pamit
-  if (/bye|dadah|pamit|selesai|sudah|cukup|gitu aja|sampai jumpa/.test(msg)) {
-    return {
-      reply: `Terima kasih sudah menghubungi SR12 Beauty Hub! 🌸\n\nSampai jumpa lagi! Jangan lupa kunjungi kami kembali. 👋`,
-      quickReplies: ['Info Produk 💄', 'Cara Order 🛍️'],
-    };
-  }
-
-  // Fallback
-  return {
-    reply: `Maaf, saya belum bisa menjawab pertanyaan itu. 😅\n\nSilakan hubungi CS kami untuk bantuan lebih lanjut:\n• **WhatsApp**: +62 811-xxx-xxxx\n• **Jam Layanan**: Senin–Sabtu 08.00–17.00 WIB\n\nAtau coba tanyakan dengan kata kunci lain!`,
-    quickReplies: ['Cara Order 🛍️', 'Info Produk 💄', 'Hubungi CS 📞', 'Info Pengiriman 🚚'],
-  };
-}
+import { type BotConfig, loadBotConfig, getBotReplyFromConfig } from '@/lib/botConfig';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -150,10 +20,18 @@ const ChatWidget = () => {
   const [sending, setSending] = useState(false);
   const [unread, setUnread] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
-  const [quickReplies, setQuickReplies] = useState<string[]>(DEFAULT_QUICK_REPLIES);
+  const [botConfig, setBotConfig] = useState<BotConfig>(loadBotConfig);
+  const [quickReplies, setQuickReplies] = useState<string[]>(
+    () => loadBotConfig().categories[0]?.quickReplies ?? ['Cara Order 🛍️', 'Info Produk 💄', 'Status Pesanan 📦', 'Promo & Voucher 🎁'],
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
+
+  // Reload bot config setiap kali chat dibuka (agar perubahan admin langsung terasa)
+  useEffect(() => {
+    if (open) setBotConfig(loadBotConfig());
+  }, [open]);
 
   const isOnAdminPage = location.pathname.startsWith('/admin');
   const shouldHideCompletely = authLoading || isAdmin || isOnAdminPage;
@@ -244,13 +122,13 @@ const ChatWidget = () => {
 
   // ── Bot reply ───────────────────────────────────────────────────────
   const triggerBotReply = async (threadId: string, userText: string) => {
-    if (!user) return;
-    const { reply, quickReplies: qr } = getBotReply(userText);
+    if (!user || !botConfig.enabled) return;  // jika bot dinonaktifkan, skip
+    const { reply, quickReplies: qr } = getBotReplyFromConfig(userText, botConfig);
 
     setIsTyping(true);
     scrollToBottom();
 
-    await new Promise((r) => setTimeout(r, BOT_DELAY_MS));
+    await new Promise((r) => setTimeout(r, botConfig.delayMs));
 
     const { data: botMsg, error } = await supabase
       .from('chat_messages')
@@ -362,10 +240,12 @@ const ChatWidget = () => {
               </div>
               <div>
                 <p className="font-semibold text-sm flex items-center gap-1">
-                  {BOT_NAME}
+                  {botConfig.botName}
                   <Sparkles className="h-3 w-3 opacity-80" />
                 </p>
-                <p className="text-xs opacity-75">Asisten Virtual SR12</p>
+                <p className="text-xs opacity-75">
+                  {botConfig.enabled ? 'Asisten Virtual SR12' : 'Layanan Pesan – Dibalas Admin'}
+                </p>
               </div>
             </div>
             <button onClick={() => setOpen(false)} aria-label="Tutup chat">
