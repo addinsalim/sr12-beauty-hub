@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot, Sparkles, LogIn } from 'lucide-react';
+import { X, Send, Loader2, Bot, Sparkles, LogIn } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -262,7 +262,7 @@ const ChatWidget = () => {
                   <Bot className="h-8 w-8 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-sm text-foreground">Halo! Saya {BOT_NAME} 👋</p>
+                  <p className="font-semibold text-sm text-foreground">Halo! Saya {botConfig.botName} 👋</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Login dulu untuk mulai chat dengan asisten virtual kami.
                   </p>
@@ -287,7 +287,7 @@ const ChatWidget = () => {
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
                       <Bot className="h-6 w-6 text-primary" />
                     </div>
-                    <p className="text-sm font-semibold text-foreground">Halo! Saya {BOT_NAME} 👋</p>
+                    <p className="text-sm font-semibold text-foreground">Halo! Saya {botConfig.botName} 👋</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Asisten virtual SR12 Beauty Hub.<br />Tanyakan apa saja!
                     </p>
