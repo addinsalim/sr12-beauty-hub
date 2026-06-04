@@ -21,9 +21,17 @@ const ChatWidget = () => {
   const [unread, setUnread] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [botConfig, setBotConfig] = useState<BotConfig>(loadBotConfig);
-  const [quickReplies, setQuickReplies] = useState<string[]>(
-    () => loadBotConfig().categories[0]?.quickReplies ?? ['Cara Order 🛍️', 'Info Produk 💄', 'Status Pesanan 📦', 'Promo & Voucher 🎁'],
-  );
+  const [quickReplies, setQuickReplies] = useState<string[]>(() => {
+    try {
+      const cfg = loadBotConfig();
+      const first = cfg.categories?.[0]?.quickReplies;
+      return Array.isArray(first) && first.length
+        ? first
+        : ['Cara Order 🛍️', 'Info Produk 💄', 'Status Pesanan 📦', 'Promo & Voucher 🎁'];
+    } catch {
+      return ['Cara Order 🛍️', 'Info Produk 💄', 'Status Pesanan 📦', 'Promo & Voucher 🎁'];
+    }
+  });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
