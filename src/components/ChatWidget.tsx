@@ -106,10 +106,17 @@ const ChatWidget = () => {
             { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `thread_id=eq.${t.id}` },
             (payload) => {
               const m = payload.new as any;
-              if (m.sender_role === 'admin') {
+              // Tampilkan pesan dari admin DAN bot (auto) secara realtime
+              if (m.sender_role === 'admin' || m.sender_role === 'auto') {
                 if (open) {
-                  setMessages((prev) => [...prev, m]);
-                  supabase.from('chat_messages').update({ is_read: true }).eq('id', m.id).then(() => {});
+                  setMessages((prev) => {
+                    // Hindari duplikat (sudah ada di state lokal)
+                    if (prev.find((p) => p.id === m.id)) return prev;
+                    return [...prev, m];
+                  });
+                  if (m.sender_role === 'admin') {
+                    supabase.from('chat_messages').update({ is_read: true }).eq('id', m.id).then(() => {});
+                  }
                 } else {
                   setUnread((u) => u + 1);
                 }
@@ -131,14 +138,28 @@ const ChatWidget = () => {
   // ── Bot reply ───────────────────────────────────────────────────────
   const triggerBotReply = async (threadId: string, userText: string) => {
     try {
-      if (!user || !botConfig.enabled) return;
-      const { reply, quickReplies: qr } = getBotReplyFromConfig(userText, botConfig);
-      if (!reply) return;
+      if (!user) return;
+
+      let reply: string;
+      let qr: string[];
+
+      if (!botConfig.enabled) {
+        // Bot dinonaktifkan — kirim balasan offline standar
+        reply = `Halo! 👋 Terima kasih sudah menghubungi **SR12 Beauty Hub**.\n\nPesan kamu sudah kami terima. Admin kami akan segera membalas.\n\n• **Jam Layanan**: Senin–Sabtu, 08.00–17.00 WIB\n• **WhatsApp**: +62 811-xxx-xxxx`;
+        qr = botConfig.fallbackQuickReplies?.length
+          ? botConfig.fallbackQuickReplies
+          : ['Cara Order 🛍️', 'Info Produk 💄', 'Hubungi CS 📞'];
+      } else {
+        const result = getBotReplyFromConfig(userText, botConfig);
+        reply = result.reply;
+        qr = result.quickReplies;
+      }
 
       setIsTyping(true);
       scrollToBottom();
 
-      await new Promise((r) => setTimeout(r, Math.max(0, Number(botConfig.delayMs) || 1000)));
+      const delay = Math.max(500, Number(botConfig.delayMs) || 1200);
+      await new Promise((r) => setTimeout(r, delay));
 
       const { data: botMsg, error } = await supabase
         .from('chat_messages')
@@ -153,7 +174,11 @@ const ChatWidget = () => {
         .single();
 
       if (!error && botMsg) {
-        setMessages((prev) => [...prev, botMsg]);
+        // Tambah ke state lokal (realtime mungkin sudah handle ini, tapi aman jika duplikat dihindari)
+        setMessages((prev) => {
+          if (prev.find((p) => p.id === botMsg.id)) return prev;
+          return [...prev, botMsg];
+        });
         await supabase.from('chat_threads').update({
           last_message: reply,
           last_message_at: new Date().toISOString(),
