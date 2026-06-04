@@ -322,7 +322,7 @@ const AdminProducts = () => {
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <Button size="sm" variant="outline" onClick={() => handleEdit(product)}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id, product)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-3 text-sm">
