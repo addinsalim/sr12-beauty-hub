@@ -86,40 +86,13 @@ export type Database = {
         }
         Relationships: []
       }
-      chat_auto_reply: {
-        Row: {
-          id: string
-          enabled: boolean
-          message: string
-          trigger_mode: string
-          delay_seconds: number
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          enabled?: boolean
-          message?: string
-          trigger_mode?: string
-          delay_seconds?: number
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          enabled?: boolean
-          message?: string
-          trigger_mode?: string
-          delay_seconds?: number
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       chat_messages: {
         Row: {
           created_at: string
           id: string
           is_read: boolean
           message: string
-          sender_id: string | null
+          sender_id: string
           sender_role: string
           thread_id: string
         }
@@ -128,7 +101,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message: string
-          sender_id?: string | null
+          sender_id: string
           sender_role: string
           thread_id: string
         }
@@ -137,7 +110,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message?: string
-          sender_id?: string | null
+          sender_id?: string
           sender_role?: string
           thread_id?: string
         }
