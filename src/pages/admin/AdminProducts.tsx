@@ -166,7 +166,7 @@ const AdminProducts = () => {
     if (!newVariant.name) return;
     try {
       await createVariant({ ...newVariant, product_id: productId });
-      setNewVariant({ name: '', type: 'Ukuran', price: 0, stock: 0 });
+      setNewVariant({ name: '', type: 'Ukuran', price: '', stock: '' });
       toast({ title: 'Varian ditambahkan!' });
       loadData();
     } catch (err: any) {
