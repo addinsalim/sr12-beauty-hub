@@ -130,38 +130,46 @@ const ChatWidget = () => {
 
   // ── Bot reply ───────────────────────────────────────────────────────
   const triggerBotReply = async (threadId: string, userText: string) => {
-    if (!user || !botConfig.enabled) return;  // jika bot dinonaktifkan, skip
-    const { reply, quickReplies: qr } = getBotReplyFromConfig(userText, botConfig);
+    try {
+      if (!user || !botConfig.enabled) return;
+      const { reply, quickReplies: qr } = getBotReplyFromConfig(userText, botConfig);
+      if (!reply) return;
 
-    setIsTyping(true);
-    scrollToBottom();
+      setIsTyping(true);
+      scrollToBottom();
 
-    await new Promise((r) => setTimeout(r, botConfig.delayMs));
+      await new Promise((r) => setTimeout(r, Math.max(0, Number(botConfig.delayMs) || 1000)));
 
-    const { data: botMsg, error } = await supabase
-      .from('chat_messages')
-      .insert({
-        thread_id: threadId,
-        sender_id: user.id,
-        sender_role: 'auto',
-        message: reply,
-        is_read: true,
-      })
-      .select()
-      .single();
+      const { data: botMsg, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          thread_id: threadId,
+          sender_id: user.id,
+          sender_role: 'auto',
+          message: reply,
+          is_read: true,
+        })
+        .select()
+        .single();
 
-    if (!error && botMsg) {
-      setMessages((prev) => [...prev, botMsg]);
-      await supabase.from('chat_threads').update({
-        last_message: reply,
-        last_message_at: new Date().toISOString(),
-        unread_user: 0,
-      }).eq('id', threadId);
+      if (!error && botMsg) {
+        setMessages((prev) => [...prev, botMsg]);
+        await supabase.from('chat_threads').update({
+          last_message: reply,
+          last_message_at: new Date().toISOString(),
+          unread_user: 0,
+        }).eq('id', threadId);
+      } else if (error) {
+        console.error('[ChatWidget] bot reply insert error:', error);
+      }
+
+      if (Array.isArray(qr) && qr.length) setQuickReplies(qr);
+    } catch (err) {
+      console.error('[ChatWidget] triggerBotReply error:', err);
+    } finally {
+      setIsTyping(false);
+      scrollToBottom();
     }
-
-    setIsTyping(false);
-    if (qr) setQuickReplies(qr);
-    scrollToBottom();
   };
 
   // ── Kirim pesan ─────────────────────────────────────────────────────
