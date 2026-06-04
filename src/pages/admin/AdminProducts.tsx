@@ -374,8 +374,8 @@ const AdminProducts = () => {
                 <select className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={newVariant.type} onChange={e => setNewVariant({ ...newVariant, type: e.target.value })}>
                   <option>Ukuran</option><option>Warna</option><option>Jenis</option>
                 </select>
-                <Input type="number" placeholder="Harga" className="w-24 h-8 text-xs" value={newVariant.price || ''} onChange={e => setNewVariant({ ...newVariant, price: Number(e.target.value) })} />
-                <Input type="number" placeholder="Stok" className="w-16 h-8 text-xs" value={newVariant.stock || ''} onChange={e => setNewVariant({ ...newVariant, stock: Number(e.target.value) })} />
+                <Input type="text" inputMode="numeric" placeholder="Harga" className="w-24 h-8 text-xs" value={newVariant.price} onChange={e => setNewVariant({ ...newVariant, price: e.target.value.replace(/[^0-9]/g, '') })} />
+                <Input type="text" inputMode="numeric" placeholder="Stok" className="w-16 h-8 text-xs" value={newVariant.stock} onChange={e => setNewVariant({ ...newVariant, stock: e.target.value.replace(/[^0-9]/g, '') })} />
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleAddVariant(product.id)}>+ Varian</Button>
               </div>
             </div>
