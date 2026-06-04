@@ -163,9 +163,18 @@ const AdminProducts = () => {
   };
 
   const handleAddVariant = async (productId: string) => {
-    if (!newVariant.name) return;
+    if (!newVariant.name.trim()) {
+      toast({ title: 'Nama varian wajib diisi', variant: 'destructive' });
+      return;
+    }
     try {
-      await createVariant({ ...newVariant, product_id: productId });
+      await createVariant({
+        product_id: productId,
+        name: newVariant.name.trim(),
+        type: newVariant.type,
+        price: Number(newVariant.price) || 0,
+        stock: Number(newVariant.stock) || 0,
+      });
       setNewVariant({ name: '', type: 'Ukuran', price: '', stock: '' });
       toast({ title: 'Varian ditambahkan!' });
       loadData();
