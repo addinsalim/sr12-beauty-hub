@@ -17,14 +17,15 @@ const AdminProducts = () => {
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Form state
+  // Form state — pakai string supaya bisa diketik manual & dikosongkan
   const [form, setForm] = useState({
-    name: '', slug: '', category_id: '', price: 0, reseller_price: 0,
-    discount: 0, stock: 0, description: '', bpom: false, halal: false,
-    weight: 0, expired_date: '', is_active: true,
+    name: '', slug: '', category_id: '',
+    price: '', discount: '', stock: '',
+    description: '', bpom: false, halal: false,
+    weight: '', expired_date: '', is_active: true,
   });
 
-  const [newVariant, setNewVariant] = useState({ name: '', type: 'Ukuran', price: 0, stock: 0 });
+  const [newVariant, setNewVariant] = useState({ name: '', type: 'Ukuran', price: '', stock: '' });
 
   const loadData = async () => {
     setLoading(true);
@@ -37,7 +38,7 @@ const AdminProducts = () => {
   useEffect(() => { loadData(); }, []);
 
   const resetForm = () => {
-    setForm({ name: '', slug: '', category_id: '', price: 0, reseller_price: 0, discount: 0, stock: 0, description: '', bpom: false, halal: false, weight: 0, expired_date: '', is_active: true });
+    setForm({ name: '', slug: '', category_id: '', price: '', discount: '', stock: '', description: '', bpom: false, halal: false, weight: '', expired_date: '', is_active: true });
     setEditing(null);
     setShowForm(false);
   };
@@ -45,9 +46,12 @@ const AdminProducts = () => {
   const handleEdit = (product: any) => {
     setForm({
       name: product.name, slug: product.slug, category_id: product.category_id || '',
-      price: Number(product.price), reseller_price: Number(product.reseller_price),
-      discount: product.discount || 0, stock: product.stock, description: product.description || '',
-      bpom: product.bpom, halal: product.halal, weight: product.weight || 0,
+      price: String(product.price ?? ''),
+      discount: String(product.discount ?? ''),
+      stock: String(product.stock ?? ''),
+      description: product.description || '',
+      bpom: !!product.bpom, halal: !!product.halal,
+      weight: String(product.weight ?? ''),
       expired_date: product.expired_date || '', is_active: product.is_active,
     });
     setEditing(product);
@@ -57,8 +61,27 @@ const AdminProducts = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const slug = form.slug || form.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const payload = { ...form, slug, category_id: form.category_id || null };
+      if (!form.name.trim()) throw new Error('Nama produk wajib diisi');
+      const priceNum = Number(form.price);
+      if (!form.price || isNaN(priceNum) || priceNum < 0) throw new Error('Harga harus berupa angka ≥ 0');
+      const stockNum = Number(form.stock);
+      if (form.stock === '' || isNaN(stockNum) || stockNum < 0) throw new Error('Stok harus berupa angka ≥ 0');
+
+      const slug = (form.slug || form.name).toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const payload: any = {
+        name: form.name.trim(),
+        slug,
+        category_id: form.category_id || null,
+        price: priceNum,
+        discount: Number(form.discount) || 0,
+        stock: stockNum,
+        description: form.description || null,
+        bpom: form.bpom,
+        halal: form.halal,
+        weight: Number(form.weight) || 0,
+        expired_date: form.expired_date || null,
+        is_active: form.is_active,
+      };
       if (editing) {
         await updateProduct(editing.id, payload);
         toast({ title: 'Produk diperbarui!' });
@@ -69,18 +92,46 @@ const AdminProducts = () => {
       resetForm();
       loadData();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Gagal menyimpan', description: err.message || 'Terjadi kesalahan', variant: 'destructive' });
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Hapus produk ini?')) return;
+  const handleDelete = async (id: string, product: any) => {
+    if (!confirm(`Hapus produk "${product.name}"?`)) return;
     try {
+      // Hapus gambar dulu (storage + DB) supaya FK image tidak menghalangi
+      if (product.product_images?.length) {
+        for (const img of product.product_images) {
+          try { await deleteProductImage(img.id, img.image_url); } catch {}
+        }
+      }
+      // Hapus varian
+      if (product.variants?.length) {
+        for (const v of product.variants) {
+          try { await deleteVariant(v.id); } catch {}
+        }
+      }
       await deleteProduct(id);
       toast({ title: 'Produk dihapus!' });
       loadData();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      const msg = String(err?.message || '');
+      // Foreign key dari order_items → tawarkan soft-delete (nonaktifkan)
+      if (msg.includes('foreign key') || msg.includes('violates') || err?.code === '23503') {
+        if (confirm('Produk ini sudah pernah dipesan, jadi tidak bisa dihapus permanen.\nNonaktifkan produk saja? (tidak akan tampil di toko)')) {
+          try {
+            await updateProduct(id, { is_active: false });
+            toast({ title: 'Produk dinonaktifkan' });
+            loadData();
+            return;
+          } catch (e: any) {
+            toast({ title: 'Gagal menonaktifkan', description: e.message, variant: 'destructive' });
+            return;
+          }
+        }
+        return;
+      }
+      toast({ title: 'Gagal menghapus', description: msg || 'Terjadi kesalahan', variant: 'destructive' });
     }
   };
 
