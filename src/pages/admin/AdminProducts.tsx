@@ -15,30 +15,36 @@ const AdminProducts = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Form state — pakai string supaya bisa diketik manual & dikosongkan
+  // Form state — NOTE: reseller_price dihapus (tidak ada di schema DB)
   const [form, setForm] = useState({
-    name: '', slug: '', category_id: '',
-    price: '', discount: '', stock: '',
-    description: '', bpom: false, halal: false,
-    weight: '', expired_date: '', is_active: true,
+    name: '', slug: '', category_id: '', price: 0,
+    discount: 0, stock: 0, description: '', bpom: false, halal: false,
+    weight: 0, expired_date: '', is_active: true,
   });
 
-  const [newVariant, setNewVariant] = useState({ name: '', type: 'Ukuran', price: '', stock: '' });
+  const [newVariant, setNewVariant] = useState({ name: '', type: 'Ukuran', price: 0, stock: 0 });
 
   const loadData = async () => {
     setLoading(true);
-    const [prods, cats] = await Promise.all([fetchAllProducts(), fetchCategories()]);
-    setProducts(prods);
-    setCategories(cats);
-    setLoading(false);
+    try {
+      const [prods, cats] = await Promise.all([fetchAllProducts(), fetchCategories()]);
+      setProducts(prods);
+      setCategories(cats);
+    } catch (err: any) {
+      console.error('[AdminProducts] loadData error:', err);
+      toast({ title: 'Gagal memuat data', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadData(); }, []);
 
   const resetForm = () => {
-    setForm({ name: '', slug: '', category_id: '', price: '', discount: '', stock: '', description: '', bpom: false, halal: false, weight: '', expired_date: '', is_active: true });
+    setForm({ name: '', slug: '', category_id: '', price: 0, discount: 0, stock: 0, description: '', bpom: false, halal: false, weight: 0, expired_date: '', is_active: true });
     setEditing(null);
     setShowForm(false);
   };
@@ -46,13 +52,10 @@ const AdminProducts = () => {
   const handleEdit = (product: any) => {
     setForm({
       name: product.name, slug: product.slug, category_id: product.category_id || '',
-      price: String(product.price ?? ''),
-      discount: String(product.discount ?? ''),
-      stock: String(product.stock ?? ''),
-      description: product.description || '',
-      bpom: !!product.bpom, halal: !!product.halal,
-      weight: String(product.weight ?? ''),
-      expired_date: product.expired_date || '', is_active: product.is_active,
+      price: Number(product.price),
+      discount: product.discount || 0, stock: product.stock, description: product.description || '',
+      bpom: !!product.bpom, halal: !!product.halal, weight: product.weight || 0,
+      expired_date: product.expired_date || '', is_active: product.is_active !== false,
     });
     setEditing(product);
     setShowForm(true);
@@ -60,78 +63,82 @@ const AdminProducts = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name.trim()) {
+      toast({ title: 'Nama produk wajib diisi', variant: 'destructive' });
+      return;
+    }
+    if (!form.price || form.price <= 0) {
+      toast({ title: 'Harga harus lebih dari 0', variant: 'destructive' });
+      return;
+    }
+    setSubmitting(true);
     try {
-      if (!form.name.trim()) throw new Error('Nama produk wajib diisi');
-      const priceNum = Number(form.price);
-      if (!form.price || isNaN(priceNum) || priceNum < 0) throw new Error('Harga harus berupa angka ≥ 0');
-      const stockNum = Number(form.stock);
-      if (form.stock === '' || isNaN(stockNum) || stockNum < 0) throw new Error('Stok harus berupa angka ≥ 0');
+      const slugGenerated = (form.slug || form.name)
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
 
-      const slug = (form.slug || form.name).toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const payload: any = {
+      const payload = {
         name: form.name.trim(),
-        slug,
+        slug: slugGenerated,
         category_id: form.category_id || null,
-        price: priceNum,
+        price: Number(form.price),
         discount: Number(form.discount) || 0,
-        stock: stockNum,
-        description: form.description || null,
+        stock: Number(form.stock) || 0,
+        description: form.description.trim() || null,
         bpom: form.bpom,
         halal: form.halal,
-        weight: Number(form.weight) || 0,
+        weight: form.weight ? Number(form.weight) : null,
         expired_date: form.expired_date || null,
         is_active: form.is_active,
       };
+
+      console.log('[AdminProducts] Submitting payload:', payload);
+
       if (editing) {
         await updateProduct(editing.id, payload);
-        toast({ title: 'Produk diperbarui!' });
+        toast({ title: '✅ Produk diperbarui!' });
       } else {
         await createProduct(payload);
-        toast({ title: 'Produk ditambahkan!' });
+        toast({ title: '✅ Produk ditambahkan!' });
       }
       resetForm();
       loadData();
     } catch (err: any) {
-      toast({ title: 'Gagal menyimpan', description: err.message || 'Terjadi kesalahan', variant: 'destructive' });
+      console.error('[AdminProducts] handleSubmit error:', err);
+      // Show detailed error info from Supabase
+      const errCode = err?.code ? ` (kode: ${err.code})` : '';
+      const errHint = err?.hint ? ` — ${err.hint}` : '';
+      const errDetail = err?.details ? ` — ${err.details}` : '';
+      toast({
+        title: 'Gagal menyimpan produk',
+        description: `${err.message}${errCode}${errHint}${errDetail}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: string, product: any) => {
-    if (!confirm(`Hapus produk "${product.name}"?`)) return;
+  const handleDelete = async (id: string) => {
+    if (!confirm('Hapus produk ini?')) return;
     try {
-      // Hapus gambar dulu (storage + DB) supaya FK image tidak menghalangi
-      if (product.product_images?.length) {
-        for (const img of product.product_images) {
-          try { await deleteProductImage(img.id, img.image_url); } catch {}
-        }
-      }
-      // Hapus varian
-      if (product.variants?.length) {
-        for (const v of product.variants) {
-          try { await deleteVariant(v.id); } catch {}
-        }
-      }
       await deleteProduct(id);
-      toast({ title: 'Produk dihapus!' });
+      toast({ title: 'Produk berhasil dihapus!' });
       loadData();
     } catch (err: any) {
-      const msg = String(err?.message || '');
-      // Foreign key dari order_items → tawarkan soft-delete (nonaktifkan)
-      if (msg.includes('foreign key') || msg.includes('violates') || err?.code === '23503') {
-        if (confirm('Produk ini sudah pernah dipesan, jadi tidak bisa dihapus permanen.\nNonaktifkan produk saja? (tidak akan tampil di toko)')) {
-          try {
-            await updateProduct(id, { is_active: false });
-            toast({ title: 'Produk dinonaktifkan' });
-            loadData();
-            return;
-          } catch (e: any) {
-            toast({ title: 'Gagal menonaktifkan', description: e.message, variant: 'destructive' });
-            return;
-          }
-        }
-        return;
+      if (err.message === 'has_transactions') {
+        toast({
+          title: 'Produk Dinonaktifkan',
+          description: 'Produk tidak bisa dihapus karena sudah memiliki riwayat transaksi/pesanan. Status produk otomatis diubah menjadi non-aktif.',
+        });
+        loadData();
+      } else {
+        toast({ title: 'Error', description: err.message, variant: 'destructive' });
       }
-      toast({ title: 'Gagal menghapus', description: msg || 'Terjadi kesalahan', variant: 'destructive' });
     }
   };
 
@@ -163,19 +170,10 @@ const AdminProducts = () => {
   };
 
   const handleAddVariant = async (productId: string) => {
-    if (!newVariant.name.trim()) {
-      toast({ title: 'Nama varian wajib diisi', variant: 'destructive' });
-      return;
-    }
+    if (!newVariant.name) return;
     try {
-      await createVariant({
-        product_id: productId,
-        name: newVariant.name.trim(),
-        type: newVariant.type,
-        price: Number(newVariant.price) || 0,
-        stock: Number(newVariant.stock) || 0,
-      });
-      setNewVariant({ name: '', type: 'Ukuran', price: '', stock: '' });
+      await createVariant({ ...newVariant, product_id: productId });
+      setNewVariant({ name: '', type: 'Ukuran', price: 0, stock: 0 });
       toast({ title: 'Varian ditambahkan!' });
       loadData();
     } catch (err: any) {
@@ -240,41 +238,83 @@ const AdminProducts = () => {
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-foreground/50 p-4">
           <div className="w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-xl my-8">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-xl font-bold">{editing ? 'Edit Produk' : 'Tambah Produk'}</h2>
-              <button onClick={resetForm}><X className="h-5 w-5 text-muted-foreground" /></button>
+              <h2 className="font-display text-xl font-bold">{editing ? 'Edit Produk' : 'Tambah Produk Baru'}</h2>
+              <button onClick={resetForm} disabled={submitting}><X className="h-5 w-5 text-muted-foreground" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
+                <div className="sm:col-span-2">
                   <Label>Nama Produk *</Label>
-                  <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+                  <Input
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    placeholder="Contoh: Parfum Rose Gold 50ml"
+                    required
+                  />
                 </div>
                 <div>
-                  <Label>Slug</Label>
-                  <Input value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value })} placeholder="auto-generated" />
+                  <Label>Slug <span className="text-xs text-muted-foreground">(otomatis dari nama)</span></Label>
+                  <Input value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value })} placeholder="kosongkan untuk auto-generate" />
                 </div>
                 <div>
                   <Label>Kategori</Label>
                   <select value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option value="">Pilih Kategori</option>
+                    <option value="">-- Pilih Kategori --</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <Label>Harga (Rp) *</Label>
-                  <Input type="text" inputMode="numeric" placeholder="contoh: 50000" value={form.price} onChange={e => setForm({ ...form, price: e.target.value.replace(/[^0-9]/g, '') })} />
+                  <Label>Harga Normal (Rp) *</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.price || ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setForm({ ...form, price: val ? Number(val) : 0 });
+                    }}
+                    placeholder="0"
+                  />
                 </div>
                 <div>
                   <Label>Diskon (%)</Label>
-                  <Input type="text" inputMode="numeric" placeholder="0" value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value.replace(/[^0-9]/g, '') })} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.discount || ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      const num = val ? Number(val) : 0;
+                      setForm({ ...form, discount: Math.min(num, 100) });
+                    }}
+                    placeholder="0"
+                  />
                 </div>
                 <div>
-                  <Label>Stok *</Label>
-                  <Input type="text" inputMode="numeric" placeholder="contoh: 10" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value.replace(/[^0-9]/g, '') })} />
+                  <Label>Stok</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.stock || ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setForm({ ...form, stock: val ? Number(val) : 0 });
+                    }}
+                    placeholder="0"
+                  />
                 </div>
                 <div>
                   <Label>Berat (gram)</Label>
-                  <Input type="text" inputMode="numeric" placeholder="0" value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value.replace(/[^0-9]/g, '') })} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.weight || ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setForm({ ...form, weight: val ? Number(val) : 0 });
+                    }}
+                    placeholder="0"
+                  />
                 </div>
                 <div>
                   <Label>Tanggal Expired</Label>
@@ -284,24 +324,32 @@ const AdminProducts = () => {
 
               <div>
                 <Label>Deskripsi</Label>
-                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]" />
+                <textarea
+                  value={form.description}
+                  onChange={e => setForm({ ...form, description: e.target.value })}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-y"
+                  placeholder="Deskripsi produk..."
+                />
               </div>
 
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={form.bpom} onChange={e => setForm({ ...form, bpom: e.target.checked })} /> BPOM
+              <div className="flex flex-wrap gap-5 pt-1">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={form.bpom} onChange={e => setForm({ ...form, bpom: e.target.checked })} className="accent-primary" /> Bersertifikat BPOM
                 </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={form.halal} onChange={e => setForm({ ...form, halal: e.target.checked })} /> Halal
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={form.halal} onChange={e => setForm({ ...form, halal: e.target.checked })} className="accent-primary" /> Halal
                 </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Aktif
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} className="accent-primary" /> Produk Aktif
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={resetForm}>Batal</Button>
-                <Button type="submit">{editing ? 'Simpan Perubahan' : 'Tambah Produk'}</Button>
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button type="button" variant="outline" onClick={resetForm} disabled={submitting}>Batal</Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting && <span className="mr-2 h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full inline-block" />}
+                  {editing ? 'Simpan Perubahan' : 'Tambah Produk'}
+                </Button>
               </div>
             </form>
           </div>
@@ -331,7 +379,7 @@ const AdminProducts = () => {
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <Button size="sm" variant="outline" onClick={() => handleEdit(product)}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id, product)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-3 text-sm">
@@ -383,8 +431,28 @@ const AdminProducts = () => {
                 <select className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={newVariant.type} onChange={e => setNewVariant({ ...newVariant, type: e.target.value })}>
                   <option>Ukuran</option><option>Warna</option><option>Jenis</option>
                 </select>
-                <Input type="text" inputMode="numeric" placeholder="Harga" className="w-24 h-8 text-xs" value={newVariant.price} onChange={e => setNewVariant({ ...newVariant, price: e.target.value.replace(/[^0-9]/g, '') })} />
-                <Input type="text" inputMode="numeric" placeholder="Stok" className="w-16 h-8 text-xs" value={newVariant.stock} onChange={e => setNewVariant({ ...newVariant, stock: e.target.value.replace(/[^0-9]/g, '') })} />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Harga"
+                  className="w-24 h-8 text-xs"
+                  value={newVariant.price || ''}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setNewVariant({ ...newVariant, price: val ? Number(val) : 0 });
+                  }}
+                />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Stok"
+                  className="w-16 h-8 text-xs"
+                  value={newVariant.stock || ''}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setNewVariant({ ...newVariant, stock: val ? Number(val) : 0 });
+                  }}
+                />
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleAddVariant(product.id)}>+ Varian</Button>
               </div>
             </div>

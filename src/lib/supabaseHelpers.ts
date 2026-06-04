@@ -9,33 +9,41 @@ export const formatPrice = (price: number): string => {
   }).format(price);
 };
 
-// Product queries (public-facing — uses products_public view to exclude reseller_price)
+// Product queries (public-facing — uses products_public view)
 export async function fetchProducts(categorySlug?: string) {
   const { data: products, error } = await (supabase
     .from('products_public')
     .select('*') as any)
     .order('created_at', { ascending: false });
-  if (error) throw error;
-  const productList = products || [];
 
+  if (error) {
+    console.error('[supabaseHelpers] fetchProducts error:', error);
+    return []; // Jangan crash, kembalikan array kosong
+  }
+
+  const productList = products || [];
   if (productList.length === 0) return [];
 
   const productIds = productList.map((p: any) => p.id);
 
-  // Fetch related data separately (these tables have public SELECT policies)
-  const [{ data: images }, { data: variants }, { data: categories }] = await Promise.all([
+  // Fetch related data separately
+  const [imagesRes, variantsRes, categoriesRes] = await Promise.all([
     supabase.from('product_images').select('id, image_url, is_primary, sort_order, product_id').in('product_id', productIds),
     supabase.from('variants').select('id, name, type, price, stock, product_id').in('product_id', productIds),
     supabase.from('categories').select('id, name, slug'),
   ]);
 
-  const catMap = Object.fromEntries((categories || []).map((c: any) => [c.id, c]));
+  const images = imagesRes.data || [];
+  const variants = variantsRes.data || [];
+  const categories = categoriesRes.data || [];
+
+  const catMap = Object.fromEntries(categories.map((c: any) => [c.id, c]));
 
   let result = productList.map((p: any) => ({
     ...p,
     categories: catMap[p.category_id] || null,
-    product_images: (images || []).filter((i: any) => i.product_id === p.id),
-    variants: (variants || []).filter((v: any) => v.product_id === p.id),
+    product_images: images.filter((i: any) => i.product_id === p.id),
+    variants: variants.filter((v: any) => v.product_id === p.id),
   }));
 
   if (categorySlug) {
@@ -76,20 +84,68 @@ export async function fetchCategories() {
 
 // Admin product CRUD
 export async function createProduct(product: any) {
+  console.log('[supabaseHelpers] createProduct called with:', product);
+  const { data: { session } } = await supabase.auth.getSession();
+  console.log('[supabaseHelpers] Current session:', session ? `user=${session.user.id}` : 'NO SESSION');
   const { data, error } = await supabase.from('products').insert(product).select().single();
-  if (error) throw error;
+  if (error) {
+    console.error('[supabaseHelpers] createProduct error:', error);
+    throw error;
+  }
   return data;
 }
 
 export async function updateProduct(id: string, product: any) {
+  console.log('[supabaseHelpers] updateProduct called, id:', id);
   const { data, error } = await supabase.from('products').update(product).eq('id', id).select().single();
-  if (error) throw error;
+  if (error) {
+    console.error('[supabaseHelpers] updateProduct error:', error);
+    throw error;
+  }
   return data;
 }
 
 export async function deleteProduct(id: string) {
+  // 1. Delete from wishlists
+  await supabase.from('wishlists').delete().eq('product_id', id);
+
+  // 2. Delete from recently_viewed
+  await supabase.from('recently_viewed').delete().eq('product_id', id);
+
+  // 3. Delete reviews and review images
+  const { data: reviews } = await supabase.from('reviews').select('id').eq('product_id', id);
+  if (reviews && reviews.length > 0) {
+    const reviewIds = reviews.map(r => r.id);
+    await supabase.from('review_images').delete().in('review_id', reviewIds);
+    await supabase.from('reviews').delete().eq('product_id', id);
+  }
+
+  // 4. Delete product images from storage and DB
+  const { data: images } = await supabase.from('product_images').select('id, image_url').eq('product_id', id);
+  if (images && images.length > 0) {
+    for (const img of images) {
+      const path = img.image_url.split('/product-images/')[1];
+      if (path) {
+        await supabase.storage.from('product-images').remove([path]);
+      }
+    }
+    await supabase.from('product_images').delete().eq('product_id', id);
+  }
+
+  // 5. Delete variants
+  await supabase.from('variants').delete().eq('product_id', id);
+
+  // 6. Delete from products
   const { error } = await supabase.from('products').delete().eq('id', id);
-  if (error) throw error;
+  if (error) {
+    if (error.code === '23503') { // Foreign key constraint violation (e.g. order_items)
+      // Soft delete/deactivate instead
+      const { error: updateError } = await supabase.from('products').update({ is_active: false }).eq('id', id);
+      if (updateError) throw updateError;
+      throw new Error('has_transactions');
+    }
+    throw error;
+  }
 }
 
 // Variants
@@ -152,10 +208,25 @@ export async function deleteProductImage(id: string, imageUrl: string) {
 
 // Admin fetch all products (including inactive)
 export async function fetchAllProducts() {
+  console.log('[supabaseHelpers] fetchAllProducts called');
+  const { data: { session } } = await supabase.auth.getSession();
+  console.log('[supabaseHelpers] session:', session ? `user=${session.user.id}` : 'NO SESSION — pastikan sudah login sebagai admin');
+
   const { data, error } = await supabase
     .from('products')
     .select(`*, categories(name, slug), product_images(id, image_url, is_primary, sort_order), variants(id, name, type, price, stock)`)
     .order('created_at', { ascending: false });
-  if (error) throw error;
+
+  if (error) {
+    console.error('[supabaseHelpers] fetchAllProducts error:', {
+      message: error.message,
+      code: error.code,
+      hint: error.hint,
+      details: error.details,
+    });
+    throw error;
+  }
+
+  console.log('[supabaseHelpers] fetchAllProducts result count:', data?.length ?? 0);
   return data || [];
 }
