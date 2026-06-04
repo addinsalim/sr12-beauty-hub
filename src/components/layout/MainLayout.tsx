@@ -21,7 +21,9 @@ const MainLayout = () => {
         </main>
         <Footer />
       </div>
-      <ChatWidget />
+      <ChatErrorBoundary>
+        <ChatWidget />
+      </ChatErrorBoundary>
     </div>
   );
 };
