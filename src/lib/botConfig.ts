@@ -126,10 +126,18 @@ export function loadBotConfig(): BotConfig {
     const raw = localStorage.getItem(BOT_CONFIG_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<BotConfig>;
+      // Merge field-per-field supaya nilai undefined tidak menimpa default
       return {
-        ...DEFAULT_BOT_CONFIG,
-        ...parsed,
-        categories: parsed.categories ?? DEFAULT_BOT_CONFIG.categories,
+        enabled: parsed.enabled ?? DEFAULT_BOT_CONFIG.enabled,
+        botName: parsed.botName || DEFAULT_BOT_CONFIG.botName,
+        delayMs: typeof parsed.delayMs === 'number' ? parsed.delayMs : DEFAULT_BOT_CONFIG.delayMs,
+        fallbackReply: parsed.fallbackReply || DEFAULT_BOT_CONFIG.fallbackReply,
+        fallbackQuickReplies: Array.isArray(parsed.fallbackQuickReplies) && parsed.fallbackQuickReplies.length
+          ? parsed.fallbackQuickReplies
+          : DEFAULT_BOT_CONFIG.fallbackQuickReplies,
+        categories: Array.isArray(parsed.categories) && parsed.categories.length
+          ? parsed.categories
+          : DEFAULT_BOT_CONFIG.categories,
       };
     }
   } catch { /* ignore */ }
@@ -145,17 +153,24 @@ export function getBotReplyFromConfig(
   userMessage: string,
   config: BotConfig,
 ): { reply: string; quickReplies: string[] } {
-  const msg = userMessage.toLowerCase();
+  const msg = (userMessage || '').toLowerCase();
+  const botName = config.botName || DEFAULT_BOT_CONFIG.botName;
 
-  for (const cat of config.categories) {
-    if (cat.keywords.some((kw) => msg.includes(kw.toLowerCase()))) {
-      const reply = cat.reply.replace(/\{botName\}/g, config.botName);
-      return { reply, quickReplies: cat.quickReplies };
+  const categories = Array.isArray(config.categories) ? config.categories : [];
+  for (const cat of categories) {
+    const kws = Array.isArray(cat?.keywords) ? cat.keywords : [];
+    if (kws.some((kw) => kw && msg.includes(String(kw).toLowerCase()))) {
+      const reply = (cat.reply || DEFAULT_BOT_CONFIG.fallbackReply).replace(/\{botName\}/g, botName);
+      const quickReplies = Array.isArray(cat.quickReplies) && cat.quickReplies.length
+        ? cat.quickReplies
+        : DEFAULT_BOT_CONFIG.fallbackQuickReplies;
+      return { reply, quickReplies };
     }
   }
 
-  return {
-    reply: config.fallbackReply.replace(/\{botName\}/g, config.botName),
-    quickReplies: config.fallbackQuickReplies,
-  };
+  const fallbackReply = (config.fallbackReply || DEFAULT_BOT_CONFIG.fallbackReply).replace(/\{botName\}/g, botName);
+  const fallbackQR = Array.isArray(config.fallbackQuickReplies) && config.fallbackQuickReplies.length
+    ? config.fallbackQuickReplies
+    : DEFAULT_BOT_CONFIG.fallbackQuickReplies;
+  return { reply: fallbackReply, quickReplies: fallbackQR };
 }

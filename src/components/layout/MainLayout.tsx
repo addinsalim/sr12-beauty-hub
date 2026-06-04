@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import ChatWidget from '@/components/ChatWidget';
+import { ChatErrorBoundary } from '@/components/ChatErrorBoundary';
 
 const MainLayout = () => {
   return (
@@ -20,7 +21,9 @@ const MainLayout = () => {
         </main>
         <Footer />
       </div>
-      <ChatWidget />
+      <ChatErrorBoundary>
+        <ChatWidget />
+      </ChatErrorBoundary>
     </div>
   );
 };
