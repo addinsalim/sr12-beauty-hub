@@ -252,24 +252,20 @@ const AdminProducts = () => {
                   </select>
                 </div>
                 <div>
-                  <Label>Harga Normal (Rp)</Label>
-                  <Input type="number" value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })} />
-                </div>
-                <div>
-                  <Label>Harga Reseller (Rp)</Label>
-                  <Input type="number" value={form.reseller_price} onChange={e => setForm({ ...form, reseller_price: Number(e.target.value) })} />
+                  <Label>Harga (Rp) *</Label>
+                  <Input type="text" inputMode="numeric" placeholder="contoh: 50000" value={form.price} onChange={e => setForm({ ...form, price: e.target.value.replace(/[^0-9]/g, '') })} />
                 </div>
                 <div>
                   <Label>Diskon (%)</Label>
-                  <Input type="number" value={form.discount} onChange={e => setForm({ ...form, discount: Number(e.target.value) })} />
+                  <Input type="text" inputMode="numeric" placeholder="0" value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value.replace(/[^0-9]/g, '') })} />
                 </div>
                 <div>
-                  <Label>Stok</Label>
-                  <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })} />
+                  <Label>Stok *</Label>
+                  <Input type="text" inputMode="numeric" placeholder="contoh: 10" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value.replace(/[^0-9]/g, '') })} />
                 </div>
                 <div>
                   <Label>Berat (gram)</Label>
-                  <Input type="number" value={form.weight} onChange={e => setForm({ ...form, weight: Number(e.target.value) })} />
+                  <Input type="text" inputMode="numeric" placeholder="0" value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value.replace(/[^0-9]/g, '') })} />
                 </div>
                 <div>
                   <Label>Tanggal Expired</Label>
