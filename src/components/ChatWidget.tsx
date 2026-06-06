@@ -114,9 +114,11 @@ const ChatWidget = () => {
                     if (prev.find((p) => p.id === m.id)) return prev;
                     return [...prev, m];
                   });
+                  // Mark as read for admin messages received via realtime
                   if (m.sender_role === 'admin') {
                     supabase.from('chat_messages').update({ is_read: true }).eq('id', m.id).then(() => {});
                   }
+                  scrollToBottom();
                 } else {
                   setUnread((u) => u + 1);
                 }
@@ -217,18 +219,26 @@ const ChatWidget = () => {
       .single();
 
     if (!error && data) {
-      setMessages((prev) => [...prev, data]);
+      setMessages((prev) => {
+        if (prev.find((p) => p.id === data.id)) return prev;
+        return [...prev, data];
+      });
+      scrollToBottom();
+
+      // Update thread stats
       await supabase.from('chat_threads').update({
         last_message: messageText,
         last_message_at: new Date().toISOString(),
         unread_admin: (thread.unread_admin || 0) + 1,
       }).eq('id', thread.id);
 
+      // Trigger bot — tidak await agar UI tidak blocking
       triggerBotReply(thread.id, messageText);
+    } else if (error) {
+      console.error('[ChatWidget] send error:', error);
     }
 
     setSending(false);
-    scrollToBottom();
   };
 
   const handleQuickReply = (qr: string) => {
