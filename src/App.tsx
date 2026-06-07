@@ -34,6 +34,7 @@ import Profile from "./pages/Profile";
 import Wishlist from "./pages/Wishlist";
 import RecentlyViewed from "./pages/RecentlyViewed";
 import MyVouchers from "./pages/MyVouchers";
+import StoreLocation from "./pages/StoreLocation";
 import AdminVouchers from "./pages/admin/AdminVouchers";
 import AdminChat from "./pages/admin/AdminChat";
 import AdminBotSettings from "./pages/admin/AdminBotSettings";
@@ -69,6 +70,7 @@ const App = () => (
                     <Route path="/wishlist" element={<Wishlist />} />
                     <Route path="/recently-viewed" element={<RecentlyViewed />} />
                     <Route path="/my-vouchers" element={<MyVouchers />} />
+                    <Route path="/store-location" element={<StoreLocation />} />
                   </Route>
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminDashboard />} />

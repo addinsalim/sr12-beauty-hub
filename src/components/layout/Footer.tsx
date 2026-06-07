@@ -41,6 +41,7 @@ const Footer = () => {
                 { href: '/products?category=parfum', label: t.nav.parfum },
                 { href: '/products?category=kosmetik', label: t.nav.kosmetik },
                 { href: '/products?category=skincare', label: t.nav.skincare },
+                { href: '/store-location', label: '📍 Lokasi Toko' },
               ].map(link => (
                 <li key={link.href}>
                   <Link to={link.href} className="group flex items-center gap-2 text-sm text-muted-foreground transition-colors duration-300 hover:text-primary">
@@ -71,9 +72,12 @@ const Footer = () => {
           <div>
             <h4 className="mb-5 font-display text-sm font-semibold text-foreground accent-line">{t.footer.contact}</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">📧 hello@sr12store.com</li>
-              <li className="flex items-center gap-2">📱 +62 812 3456 7890</li>
-              <li className="flex items-center gap-2">📍 Jakarta, Indonesia</li>
+              <li className="flex items-center gap-2">📧 cs@sr12beautyhub.com</li>
+              <li className="flex items-center gap-2">📱 +62 811-xxx-xxxx</li>
+              <li className="flex items-start gap-2">
+                <span>📍</span>
+                <span>Pesantren Mafatih, Legokhuni,<br />Kec. Wanayasa, Purwakarta 41174</span>
+              </li>
             </ul>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle, Heart, History, Ticket, Shield } from 'lucide-react';
+import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle, Heart, History, Ticket, Shield, MapPin } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -32,6 +32,7 @@ const Navbar = () => {
     { href: '/products?category=kosmetik', label: t.nav.kosmetik },
     { href: '/products?category=skincare', label: t.nav.skincare },
     { href: '/about', label: t.nav.about, icon: Info },
+    { href: '/store-location', label: 'Lokasi Toko', icon: MapPin },
   ];
 
   return (
