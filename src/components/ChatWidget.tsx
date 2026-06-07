@@ -21,17 +21,9 @@ const ChatWidget = () => {
   const [unread, setUnread] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [botConfig, setBotConfig] = useState<BotConfig>(loadBotConfig);
-  const [quickReplies, setQuickReplies] = useState<string[]>(() => {
-    try {
-      const cfg = loadBotConfig();
-      const first = cfg.categories?.[0]?.quickReplies;
-      return Array.isArray(first) && first.length
-        ? first
-        : ['Cara Order 🛍️', 'Info Produk 💄', 'Status Pesanan 📦', 'Promo & Voucher 🎁'];
-    } catch {
-      return ['Cara Order 🛍️', 'Info Produk 💄', 'Status Pesanan 📦', 'Promo & Voucher 🎁'];
-    }
-  });
+  const [quickReplies, setQuickReplies] = useState<string[]>(
+    ['Cara Order 🛍️', 'Info Produk 💄', 'Status Pesanan 📦', 'Promo & Voucher 🎁'],
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
@@ -52,6 +44,7 @@ const ChatWidget = () => {
   const ensureThread = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    let isNewThread = false;
     let { data: t } = await supabase
       .from('chat_threads')
       .select('*')
@@ -65,6 +58,7 @@ const ChatWidget = () => {
         .select()
         .single();
       t = created;
+      isNewThread = true;
     }
 
     setThread(t);
@@ -86,7 +80,49 @@ const ChatWidget = () => {
     setUnread(0);
     setLoading(false);
     scrollToBottom();
-  }, [user]);
+
+    // Kirim pesan sambutan otomatis jika thread baru (belum ada pesan)
+    if (isNewThread && t) {
+      const cfg = loadBotConfig();
+      if (cfg.enabled) {
+        setTimeout(() => triggerWelcomeMessage(t!.id, cfg), 800);
+      }
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Pesan sambutan pertama kali ─────────────────────────────────────
+  const triggerWelcomeMessage = async (threadId: string, cfg: any) => {
+    if (!user) return;
+    const botName = cfg.botName || 'Bella';
+    const welcomeMsg = `Halo! 👋 Selamat datang di **SR12 Beauty Hub**!\n\nSaya **${botName}**, asisten virtual yang siap membantu kamu 24/7.\n\nAda yang bisa saya bantu hari ini? Pilih topik di bawah atau ketik pertanyaanmu! 😊`;
+    setIsTyping(true);
+    scrollToBottom();
+    await new Promise((r) => setTimeout(r, 1200));
+    const { data: botMsg, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        thread_id: threadId,
+        sender_id: user.id,
+        sender_role: 'auto',
+        message: welcomeMsg,
+        is_read: true,
+      })
+      .select()
+      .single();
+    if (!error && botMsg) {
+      setMessages((prev) => {
+        if (prev.find((p) => p.id === botMsg.id)) return prev;
+        return [...prev, botMsg];
+      });
+      await supabase.from('chat_threads').update({
+        last_message: welcomeMsg,
+        last_message_at: new Date().toISOString(),
+        unread_user: 0,
+      }).eq('id', threadId);
+    }
+    setIsTyping(false);
+    scrollToBottom();
+  };
 
   // ── Realtime subscribe ──────────────────────────────────────────────
   useEffect(() => {
@@ -422,7 +458,7 @@ const ChatWidget = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
-                placeholder="Tulis pesan..."
+                placeholder="Ketik pertanyaanmu di sini..."
                 className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                 disabled={sending || isTyping}
                 autoComplete="off"
