@@ -126,18 +126,37 @@ const ImageUploader = ({
 };
 
 const ReviewImageGallery = ({ images }: { images: ReviewImage[] }) => {
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   if (!images || images.length === 0) return null;
 
+  const total = images.length;
+  const goPrev = (e?: React.MouseEvent) => { e?.stopPropagation(); setLightboxIndex(i => i !== null ? (i - 1 + total) % total : null); };
+  const goNext = (e?: React.MouseEvent) => { e?.stopPropagation(); setLightboxIndex(i => i !== null ? (i + 1) % total : null); };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 40) {
+      dx < 0 ? goNext() : goPrev();
+    }
+    touchStartX.current = null;
+  };
+
   return (
     <>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {images.map(img => (
+      {/* Thumbnail grid */}
+      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x">
+        {images.map((img, i) => (
           <button
             key={img.id}
-            onClick={() => setLightboxUrl(img.image_url)}
-            className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border transition hover:border-primary sm:h-20 sm:w-20"
+            onClick={() => setLightboxIndex(i)}
+            className="group relative h-16 w-16 shrink-0 snap-start overflow-hidden rounded-lg border border-border transition hover:border-primary sm:h-20 sm:w-20"
           >
             <img src={img.image_url} alt="" className="h-full w-full object-cover" />
             <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 transition group-hover:bg-foreground/20">
@@ -146,10 +165,46 @@ const ReviewImageGallery = ({ images }: { images: ReviewImage[] }) => {
           </button>
         ))}
       </div>
-      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
-        <DialogContent className="max-w-2xl border-none bg-transparent p-0 shadow-none">
-          {lightboxUrl && (
-            <img src={lightboxUrl} alt="" className="max-h-[80vh] w-full rounded-xl object-contain" />
+
+      {/* Lightbox Slider */}
+      <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
+        <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none">
+          {lightboxIndex !== null && (
+            <div 
+              className="relative flex items-center justify-center select-none"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              <img 
+                src={images[lightboxIndex].image_url} 
+                alt="Review detail" 
+                className="max-h-[85vh] w-full rounded-xl object-contain animate-fade-in" 
+                draggable={false}
+              />
+              
+              {/* Controls */}
+              {total > 1 && (
+                <>
+                  <button
+                    onClick={goPrev}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/50 backdrop-blur-md text-foreground transition hover:bg-background/90"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <button
+                    onClick={goNext}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/50 backdrop-blur-md text-foreground transition hover:bg-background/90"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                  
+                  {/* Indicator */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background/60 backdrop-blur-md px-3 py-1 text-xs font-medium text-foreground">
+                    {lightboxIndex + 1} / {total}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
