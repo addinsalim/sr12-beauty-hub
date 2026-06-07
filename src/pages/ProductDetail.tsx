@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Star, Shield, Award, Minus, Plus, Heart, Share2, Truck, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, Star, Shield, Award, Minus, Plus, Heart, Share2, Truck, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { fetchProductBySlug, formatPrice } from '@/lib/supabaseHelpers';
 import { useCart } from '@/hooks/useCart';
@@ -31,6 +31,11 @@ const ProductDetail = () => {
   const [selectedVariant, setSelectedVariant] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  // Touch / drag state untuk swipe
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const isDragging = useRef(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -70,6 +75,27 @@ const ProductDetail = () => {
     allImages.push(categoryImages[product.categories?.slug] || productParfum);
   }
   const imgSrc = allImages[selectedImageIndex] || allImages[0];
+  const total = allImages.length;
+
+  const goPrev = () => setSelectedImageIndex(i => (i - 1 + total) % total);
+  const goNext = () => setSelectedImageIndex(i => (i + 1) % total);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      dx < 0 ? goNext() : goPrev();
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,24 +112,77 @@ const ProductDetail = () => {
 
       <div className="container mx-auto px-4 py-10 md:py-14">
         <div className="grid gap-12 md:grid-cols-2">
-          {/* Images Section */}
+          {/* ── Image Slider Section ── */}
           <div className="space-y-4">
-            <div className="group overflow-hidden rounded-3xl bg-gradient-gold shadow-glow transition-shadow duration-500 hover:shadow-glow-lg opacity-0 animate-blur-in aspect-square">
+            {/* Main image with swipe */}
+            <div
+              className="relative group overflow-hidden rounded-3xl bg-gradient-gold shadow-glow transition-shadow duration-500 hover:shadow-glow-lg opacity-0 animate-blur-in aspect-square select-none"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Slide images */}
               <img
+                key={selectedImageIndex}
                 src={imgSrc}
                 alt={product.name}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="h-full w-full object-cover transition-all duration-500 animate-fade-in"
+                draggable={false}
               />
+
+              {/* Arrow buttons — hanya tampil jika > 1 gambar */}
+              {total > 1 && (
+                <>
+                  <button
+                    id="img-prev"
+                    onClick={goPrev}
+                    aria-label="Gambar sebelumnya"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-background/70 backdrop-blur-md shadow-card border border-border/40 text-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-background/90 hover:scale-110"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    id="img-next"
+                    onClick={goNext}
+                    aria-label="Gambar berikutnya"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-background/70 backdrop-blur-md shadow-card border border-border/40 text-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-background/90 hover:scale-110"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+
+                  {/* Dot indicators */}
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+                    {allImages.map((_: string, i: number) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedImageIndex(i)}
+                        aria-label={`Gambar ${i + 1}`}
+                        className={`rounded-full transition-all duration-300 ${
+                          selectedImageIndex === i
+                            ? 'w-5 h-2 bg-primary shadow-glow'
+                            : 'w-2 h-2 bg-white/60 hover:bg-white/90'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Counter badge */}
+                  <div className="absolute top-3 right-3 z-10 rounded-full bg-background/60 backdrop-blur-md px-2.5 py-0.5 text-xs font-semibold text-foreground border border-border/30">
+                    {selectedImageIndex + 1} / {total}
+                  </div>
+                </>
+              )}
             </div>
-            {allImages.length > 1 && (
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+
+            {/* Thumbnail strip — horizontally scrollable */}
+            {total > 1 && (
+              <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide snap-x">
                 {allImages.map((url: string, i: number) => (
                   <button
                     key={i}
                     onClick={() => setSelectedImageIndex(i)}
-                    className={`h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
+                    className={`h-20 w-20 shrink-0 snap-start overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
                       selectedImageIndex === i
-                        ? 'border-primary ring-2 ring-primary/50 shadow-glow'
+                        ? 'border-primary ring-2 ring-primary/50 shadow-glow scale-[1.05]'
                         : 'border-transparent glass hover:border-primary/50 hover:shadow-card'
                     }`}
                   >

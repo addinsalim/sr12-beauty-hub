@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Star, Shield, Award, Heart } from 'lucide-react';
+import { ShoppingBag, Star, Shield, Award, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -8,11 +9,13 @@ import { formatPrice } from '@/lib/supabaseHelpers';
 import productParfum from '@/assets/product-parfum.png';
 import productSkincare from '@/assets/product-skincare.png';
 import productKosmetik from '@/assets/product-kosmetik.png';
+import productHerbal from '@/assets/product-herbal.png';
 
 const categoryImages: Record<string, string> = {
   parfum: productParfum,
   skincare: productSkincare,
   kosmetik: productKosmetik,
+  herbal: productHerbal,
 };
 
 interface ProductCardProduct {
@@ -37,22 +40,35 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
   const { isInWishlist, toggle } = useWishlist();
   const { toast } = useToast();
   const isOutOfStock = product.stock === 0;
-  const imgSrc = product.primaryImage || product.images?.[0] || categoryImages[product.category] || productParfum;
+  const fallback = categoryImages[product.category] || productParfum;
+  const allImgs: string[] = product.images && product.images.length > 0
+    ? product.images
+    : [product.primaryImage || fallback];
+  const [imgIdx, setImgIdx] = useState(0);
+  const total = allImgs.length;
+  const imgSrc = allImgs[imgIdx];
   const wished = isInWishlist(product.id);
+
+  // touch swipe
+  const touchX = useState<number | null>(null);
+  const startX = { current: null as number | null };
+
+  const goPrev = (e: React.MouseEvent) => { e.preventDefault(); setImgIdx(i => (i - 1 + total) % total); };
+  const goNext = (e: React.MouseEvent) => { e.preventDefault(); setImgIdx(i => (i + 1) % total); };
 
   return (
     <div className="group glow-ring relative flex flex-col overflow-hidden rounded-2xl glass border-border/30 shadow-card transition-all duration-500 hover:-translate-y-2 hover:shadow-glow-lg">
       {/* Wishlist heart button */}
       <button
         onClick={(e) => { e.preventDefault(); toggle(product.id, product.name); }}
-        className={`absolute right-3 top-3 z-10 h-8 w-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 ${wished ? 'bg-rose-gold text-white' : 'bg-white/70 text-muted-foreground hover:text-rose-gold'}`}
+        className={`absolute right-3 top-3 z-20 h-8 w-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 ${wished ? 'bg-rose-gold text-white' : 'bg-white/70 text-muted-foreground hover:text-rose-gold'}`}
         aria-label="Tambah ke wishlist"
       >
         <Heart className={`h-4 w-4 ${wished ? 'fill-current' : ''}`} />
       </button>
 
       {/* Badges */}
-      <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
+      <div className="absolute left-3 top-3 z-20 flex flex-col gap-1.5">
         {product.discount ? (
           <span className="rounded-full bg-accent/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold text-accent-foreground shadow-sm">
             -{product.discount}%
@@ -65,12 +81,66 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
         )}
       </div>
 
-      <Link to={`/products/${product.slug}`} className="relative aspect-square overflow-hidden bg-gradient-gold">
-        <img
-          src={imgSrc}
-          alt={product.name}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-        />
+      {/* ── Image Slider ── */}
+      <div
+        className="relative aspect-square overflow-hidden bg-gradient-gold select-none"
+        onTouchStart={e => { startX.current = e.touches[0].clientX; }}
+        onTouchEnd={e => {
+          if (startX.current === null) return;
+          const dx = e.changedTouches[0].clientX - startX.current;
+          if (Math.abs(dx) > 40) dx < 0 ? setImgIdx(i => (i + 1) % total) : setImgIdx(i => (i - 1 + total) % total);
+          startX.current = null;
+        }}
+      >
+        <Link to={`/products/${product.slug}`}>
+          <img
+            key={imgIdx}
+            src={imgSrc}
+            alt={product.name}
+            className="h-full w-full object-cover transition-all duration-500"
+            draggable={false}
+          />
+        </Link>
+
+        {/* Arrows — hanya jika > 1 gambar */}
+        {total > 1 && (
+          <>
+            <button
+              onClick={goPrev}
+              aria-label="Sebelumnya"
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/70 backdrop-blur-md border border-border/30 text-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 hover:bg-background/90"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={goNext}
+              aria-label="Berikutnya"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/70 backdrop-blur-md border border-border/30 text-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 hover:bg-background/90"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+
+            {/* Dot indicators */}
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10">
+              {allImgs.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={e => { e.preventDefault(); setImgIdx(i); }}
+                  className={`rounded-full transition-all duration-300 ${
+                    imgIdx === i ? 'w-4 h-1.5 bg-primary' : 'w-1.5 h-1.5 bg-white/60'
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Counter */}
+            <div className="absolute top-2 left-2 z-10 rounded-full bg-background/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-semibold text-foreground border border-border/20">
+              {imgIdx + 1}/{total}
+            </div>
+          </>
+        )}
+
+        {/* Add to cart overlay */}
         {!isOutOfStock && (
           <button
             onClick={(e) => {
@@ -86,13 +156,13 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
               });
               toast({ title: 'Ditambahkan ke keranjang', description: product.name });
             }}
-            className="absolute inset-x-0 bottom-0 flex translate-y-full items-center justify-center glass py-3.5 transition-transform duration-300 group-hover:translate-y-0"
+            className="absolute inset-x-0 bottom-0 flex translate-y-full items-center justify-center glass py-3.5 transition-transform duration-300 group-hover:translate-y-0 z-10"
           >
             <ShoppingBag className="mr-2 h-4 w-4 text-foreground" />
             <span className="text-sm font-medium text-foreground">{t.products.addToCart}</span>
           </button>
         )}
-      </Link>
+      </div>
 
       {/* Content */}
       <div className="flex flex-1 flex-col p-5">
