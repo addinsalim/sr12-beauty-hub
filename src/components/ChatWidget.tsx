@@ -178,17 +178,20 @@ const ChatWidget = () => {
     try {
       if (!user) return;
 
+      // Selalu baca config fresh dari localStorage (hindari stale closure)
+      const cfg = loadBotConfig();
+
       let reply: string;
       let qr: string[];
 
-      if (!botConfig.enabled) {
+      if (!cfg.enabled) {
         // Bot dinonaktifkan — kirim balasan offline standar
         reply = `Halo! 👋 Terima kasih sudah menghubungi **SR12 Beauty Hub**.\n\nPesan kamu sudah kami terima. Admin kami akan segera membalas.\n\n• **Jam Layanan**: Senin–Sabtu, 08.00–17.00 WIB\n• **WhatsApp**: +62 811-xxx-xxxx`;
-        qr = botConfig.fallbackQuickReplies?.length
-          ? botConfig.fallbackQuickReplies
+        qr = cfg.fallbackQuickReplies?.length
+          ? cfg.fallbackQuickReplies
           : ['Cara Order 🛍️', 'Info Produk 💄', 'Hubungi CS 📞'];
       } else {
-        const result = getBotReplyFromConfig(userText, botConfig);
+        const result = getBotReplyFromConfig(userText, cfg);
         reply = result.reply;
         qr = result.quickReplies;
       }
@@ -196,7 +199,7 @@ const ChatWidget = () => {
       setIsTyping(true);
       scrollToBottom();
 
-      const delay = Math.max(500, Number(botConfig.delayMs) || 1200);
+      const delay = Math.max(500, Number(cfg.delayMs) || 1000);
       await new Promise((r) => setTimeout(r, delay));
 
       const { data: botMsg, error } = await supabase
@@ -223,7 +226,23 @@ const ChatWidget = () => {
           unread_user: 0,
         }).eq('id', threadId);
       } else if (error) {
-        console.error('[ChatWidget] bot reply insert error:', error);
+        console.error('[ChatWidget] ❌ bot reply INSERT GAGAL:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        });
+        // Tampilkan pesan di UI langsung (tanpa simpan ke DB) agar user tahu bot aktif
+        const fallbackMsg = {
+          id: `local-${Date.now()}`,
+          thread_id: threadId,
+          sender_id: user.id,
+          sender_role: 'auto',
+          message: reply,
+          is_read: true,
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, fallbackMsg]);
       }
 
       if (Array.isArray(qr) && qr.length) setQuickReplies(qr);
