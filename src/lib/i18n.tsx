@@ -17,6 +17,7 @@ const translations = {
       parfum: 'Parfum',
       kosmetik: 'Kosmetik',
       skincare: 'Skincare',
+      herbal: 'Herbal',
     },
     hero: {
       title: 'Kecantikan Alami,',
@@ -34,6 +35,8 @@ const translations = {
       kosmetikDesc: 'Tampil cantik sepanjang hari',
       skincare: 'Skincare',
       skincareDesc: 'Rawat kulit Anda dengan bahan terbaik',
+      herbal: 'Herbal',
+      herbalDesc: 'Produk herbal alami untuk kesehatan & kecantikan',
     },
     products: {
       title: 'Produk Terlaris',
@@ -83,6 +86,7 @@ const translations = {
       parfum: 'Perfume',
       kosmetik: 'Cosmetics',
       skincare: 'Skincare',
+      herbal: 'Herbal',
     },
     hero: {
       title: 'Natural Beauty,',
@@ -100,6 +104,8 @@ const translations = {
       kosmetikDesc: 'Look beautiful all day long',
       skincare: 'Skincare',
       skincareDesc: 'Nourish your skin with the finest ingredients',
+      herbal: 'Herbal',
+      herbalDesc: 'Natural herbal products for health & beauty',
     },
     products: {
       title: 'Best Sellers',

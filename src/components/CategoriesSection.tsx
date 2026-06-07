@@ -4,6 +4,7 @@ import { useI18n } from '@/lib/i18n';
 import productParfum from '@/assets/product-parfum.png';
 import productSkincare from '@/assets/product-skincare.png';
 import productKosmetik from '@/assets/product-kosmetik.png';
+import productHerbal from '@/assets/product-herbal.png';
 
 const CategoriesSection = () => {
   const { t } = useI18n();
@@ -30,6 +31,13 @@ const CategoriesSection = () => {
       href: '/products?category=skincare',
       gradient: 'from-champagne/30 to-cream/40',
     },
+    {
+      name: t.categories.herbal,
+      description: t.categories.herbalDesc,
+      image: productHerbal,
+      href: '/products?category=herbal',
+      gradient: 'from-emerald-500/15 to-green-400/20',
+    },
   ];
 
   return (
@@ -43,7 +51,7 @@ const CategoriesSection = () => {
         </div>
 
         {/* Horizontal scroll on mobile, grid on desktop */}
-        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-3 sm:gap-8 sm:overflow-visible sm:pb-0">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:pb-0 lg:grid-cols-4">
           {categories.map((cat, i) => (
             <Link
               key={cat.name}

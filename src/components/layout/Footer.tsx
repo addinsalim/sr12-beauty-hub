@@ -41,6 +41,7 @@ const Footer = () => {
                 { href: '/products?category=parfum', label: t.nav.parfum },
                 { href: '/products?category=kosmetik', label: t.nav.kosmetik },
                 { href: '/products?category=skincare', label: t.nav.skincare },
+                { href: '/products?category=herbal', label: t.nav.herbal },
                 { href: '/store-location', label: '📍 Lokasi Toko' },
               ].map(link => (
                 <li key={link.href}>

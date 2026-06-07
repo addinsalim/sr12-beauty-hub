@@ -31,6 +31,7 @@ const Navbar = () => {
     { href: '/products?category=parfum', label: t.nav.parfum },
     { href: '/products?category=kosmetik', label: t.nav.kosmetik },
     { href: '/products?category=skincare', label: t.nav.skincare },
+    { href: '/products?category=herbal', label: t.nav.herbal },
     { href: '/about', label: t.nav.about, icon: Info },
     { href: '/store-location', label: 'Lokasi Toko', icon: MapPin },
   ];
