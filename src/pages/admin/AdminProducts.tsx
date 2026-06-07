@@ -32,7 +32,33 @@ const AdminProducts = () => {
     try {
       const [prods, cats] = await Promise.all([fetchAllProducts(), fetchCategories()]);
       setProducts(prods);
-      setCategories(cats);
+
+      // Pastikan kategori Herbal selalu ada di list (fallback jika migration DB belum dijalankan)
+      const REQUIRED_CATEGORIES = [
+        { slug: 'parfum',   name: 'Parfum',   description: 'Koleksi parfum eksklusif SR12' },
+        { slug: 'kosmetik', name: 'Kosmetik', description: 'Produk kosmetik berkualitas SR12' },
+        { slug: 'skincare', name: 'Skincare', description: 'Rangkaian perawatan kulit SR12' },
+        { slug: 'herbal',   name: 'Herbal',   description: 'Produk herbal alami SR12' },
+      ];
+      const mergedCats = [...cats];
+      for (const req of REQUIRED_CATEGORIES) {
+        if (!mergedCats.find(c => c.slug === req.slug)) {
+          // Coba insert ke DB, jika gagal tetap tampilkan sebagai fallback lokal
+          try {
+            const { data: inserted } = await (await import('@/integrations/supabase/client')).supabase
+              .from('categories')
+              .insert({ name: req.name, slug: req.slug, description: req.description })
+              .select()
+              .single();
+            if (inserted) mergedCats.push(inserted);
+          } catch {
+            mergedCats.push({ id: `local-${req.slug}`, ...req });
+          }
+        }
+      }
+      // Urutkan alfabetis
+      mergedCats.sort((a, b) => a.name.localeCompare(b.name));
+      setCategories(mergedCats);
     } catch (err: any) {
       console.error('[AdminProducts] loadData error:', err);
       toast({ title: 'Gagal memuat data', description: err.message, variant: 'destructive' });
