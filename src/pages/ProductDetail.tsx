@@ -363,7 +363,7 @@ const ProductDetail = () => {
             {/* Description */}
             <div className="mt-10">
               <h3 className="mb-4 font-display text-lg font-semibold text-foreground accent-line">Deskripsi</h3>
-              <p className="leading-relaxed text-muted-foreground">{product.description}</p>
+              <div className="leading-relaxed text-muted-foreground whitespace-pre-wrap text-justify">{product.description}</div>
               <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
                 <div className="rounded-xl glass p-4">
                   <span className="text-muted-foreground">Berat:</span>
