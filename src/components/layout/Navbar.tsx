@@ -58,9 +58,7 @@ const Navbar = () => {
         <div className="container mx-auto flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 transition-transform hover:scale-[1.02]">
-            <span className="font-display text-2xl font-bold tracking-tight text-foreground">
-              SR12 <span className="text-gradient-gold">Store</span>
-            </span>
+            <img src="/logo.png" alt="SR12 Purwakarta" className="h-10 w-auto object-contain" />
           </Link>
 
           {/* Desktop nav */}
@@ -187,9 +185,9 @@ const Navbar = () => {
           <div className="fixed inset-x-0 top-0 z-50 max-h-[85vh] overflow-y-auto rounded-b-3xl border-b border-border/50 glass-strong shadow-elegant animate-slide-down lg:hidden">
             {/* Mobile header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
-              <span className="font-display text-xl font-bold text-foreground">
-                SR12 <span className="text-gradient-gold">Store</span>
-              </span>
+              <Link to="/" onClick={() => setIsOpen(false)}>
+                <img src="/logo.png" alt="SR12 Purwakarta" className="h-8 w-auto object-contain" />
+              </Link>
               <button
                 onClick={() => setIsOpen(false)}
                 className="rounded-full p-2 transition hover:bg-secondary hover:scale-110"
