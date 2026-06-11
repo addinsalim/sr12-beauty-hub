@@ -100,7 +100,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const newItems = JSON.parse(e.newValue);
           isRemoteUpdate.current = true;
           setItems(newItems);
-        } catch (err) { }
+        } catch (err) {
+          // Ignore parse error
+        }
       }
     };
     window.addEventListener('storage', handleStorageChange);

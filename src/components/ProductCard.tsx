@@ -92,7 +92,10 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
         onTouchEnd={e => {
           if (startX.current === null) return;
           const dx = e.changedTouches[0].clientX - startX.current;
-          if (Math.abs(dx) > 40) dx < 0 ? setImgIdx(i => (i + 1) % total) : setImgIdx(i => (i - 1 + total) % total);
+          if (Math.abs(dx) > 40) {
+            if (dx < 0) setImgIdx(i => (i + 1) % total);
+            else setImgIdx(i => (i - 1 + total) % total);
+          }
           startX.current = null;
         }}
       >

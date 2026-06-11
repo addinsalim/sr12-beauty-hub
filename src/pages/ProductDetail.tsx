@@ -93,7 +93,8 @@ const ProductDetail = () => {
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      dx < 0 ? goNext() : goPrev();
+      if (dx < 0) goNext();
+      else goPrev();
     }
     touchStartX.current = null;
     touchStartY.current = null;
