@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Star, Shield, Award, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/useCart';
@@ -32,6 +32,7 @@ interface ProductCardProduct {
   reviewCount: number;
   bpom: boolean;
   halal: boolean;
+  variants?: any[];
 }
 
 const ProductCard = ({ product }: { product: ProductCardProduct }) => {
@@ -39,6 +40,7 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
   const { addItem } = useCart();
   const { isInWishlist, toggle } = useWishlist();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const isOutOfStock = product.stock === 0;
   const fallback = categoryImages[product.category] || productParfum;
   const allImgs: string[] = product.images && product.images.length > 0
@@ -145,10 +147,17 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
           <button
             onClick={(e) => {
               e.preventDefault();
+              if (product.variants && product.variants.length > 1) {
+                toast({ title: 'Pilih varian', description: 'Silakan pilih varian produk terlebih dahulu.' });
+                navigate(`/products/${product.slug}`);
+                return;
+              }
               const finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
               addItem({
                 productId: product.id,
+                variantId: product.variants?.length === 1 ? product.variants[0].id : undefined,
                 name: product.name,
+                variantName: product.variants?.length === 1 ? product.variants[0].name : undefined,
                 price: finalPrice,
                 image: imgSrc,
                 slug: product.slug,
@@ -159,7 +168,9 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
             className="absolute inset-x-0 bottom-0 flex translate-y-full items-center justify-center glass py-3.5 transition-transform duration-300 group-hover:translate-y-0 z-10"
           >
             <ShoppingBag className="mr-2 h-4 w-4 text-foreground" />
-            <span className="text-sm font-medium text-foreground">{t.products.addToCart}</span>
+            <span className="text-sm font-medium text-foreground">
+              {product.variants && product.variants.length > 1 ? 'Pilih Varian' : t.products.addToCart}
+            </span>
           </button>
         )}
       </div>

@@ -28,7 +28,7 @@ const ProductDetail = () => {
   const { toast } = useToast();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedVariant, setSelectedVariant] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
@@ -65,7 +65,7 @@ const ProductDetail = () => {
   }
 
   const variants = product.variants || [];
-  const variant = variants[selectedVariant];
+  const variant = selectedVariant !== null ? variants[selectedVariant] : (variants.length === 1 ? variants[0] : null);
   const displayPrice = variant ? Number(variant.price) : Number(product.price);
   const finalPrice = product.discount > 0 ? displayPrice * (1 - product.discount / 100) : displayPrice;
   const allImages = (product.product_images || [])
@@ -293,7 +293,7 @@ const ProductDetail = () => {
             <div className="mb-8 flex flex-wrap gap-3">
               <button
                 onClick={() => {
-                  if (variants.length > 1 && !variant) {
+                  if (variants.length > 1 && selectedVariant === null) {
                     toast({ title: 'Pilih varian', description: 'Harap pilih varian produk terlebih dahulu.', variant: 'destructive' });
                     return;
                   }
@@ -316,7 +316,7 @@ const ProductDetail = () => {
               
               <button
                 onClick={() => {
-                  if (variants.length > 1 && !variant) {
+                  if (variants.length > 1 && selectedVariant === null) {
                     toast({ title: 'Pilih varian', description: 'Harap pilih varian produk terlebih dahulu.', variant: 'destructive' });
                     return;
                   }
