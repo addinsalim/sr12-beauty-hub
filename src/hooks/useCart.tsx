@@ -55,54 +55,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchAndSync = async () => {
       setIsSyncing(true);
       try {
-        const { data, error } = await supabase
-          .from('cart_items')
-          .select(`
-            id,
-            quantity,
-            product_id,
-            variant_id,
-            products (id, name, slug, price, stock, product_images (image_url, is_primary)),
-            variants (id, name, price, stock)
-          `)
-          .eq('user_id', user.id);
+        // Fetch latest user data to get metadata
+        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
+        if (error || !currentUser) throw error;
 
-        if (error) throw error;
-
-        // If local has items but DB is empty, sync local to DB
-        if (data.length === 0 && items.length > 0) {
-          const toInsert = items.map(item => ({
-            user_id: user.id,
-            product_id: item.productId,
-            variant_id: item.variantId || null,
-            quantity: item.quantity
-          }));
-          await supabase.from('cart_items').insert(toInsert);
-        } else if (data.length > 0) {
-          // If DB has items, prefer DB items
-          const dbItems: CartItem[] = data.map((d: any) => {
-            const product = Array.isArray(d.products) ? d.products[0] : d.products;
-            const variant = Array.isArray(d.variants) ? d.variants[0] : d.variants;
-            
-            let imageUrl = '';
-            if (product?.product_images && product.product_images.length > 0) {
-               const primary = product.product_images.find((img: any) => img.is_primary);
-               imageUrl = primary ? primary.image_url : product.product_images[0].image_url;
-            }
-
-            return {
-              productId: d.product_id,
-              variantId: d.variant_id || undefined,
-              name: product?.name || 'Unknown',
-              slug: product?.slug || '',
-              price: variant?.price || product?.price || 0,
-              stock: variant?.stock || product?.stock || 0,
-              image: imageUrl,
-              quantity: d.quantity,
-              variantName: variant?.name
-            };
+        const remoteCart = currentUser.user_metadata?.cart as CartItem[] | undefined;
+        
+        // If local has items but remote is empty, sync local to remote
+        if ((!remoteCart || remoteCart.length === 0) && items.length > 0) {
+          await supabase.auth.updateUser({
+            data: { cart: items }
           });
-          setItems(dbItems);
+        } else if (remoteCart && remoteCart.length > 0) {
+          // If remote has items, prefer remote items
+          setItems(remoteCart);
         }
       } catch (err) {
         console.error('Error syncing cart:', err);
@@ -118,7 +84,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Always update local storage as backup
   useEffect(() => {
     localStorage.setItem(CART_KEY, JSON.stringify(items));
-  }, [items]);
+    
+    // Also sync to user metadata if logged in
+    // Debounce this in a real app, but for now we just fire it
+    if (user && !isSyncing) {
+      supabase.auth.updateUser({
+        data: { cart: items }
+      }).catch(err => console.error('Error updating remote cart:', err));
+    }
+  }, [items, user, isSyncing]);
 
   const addItem = useCallback(async (item: Omit<CartItem, 'quantity'>, qty = 1) => {
     setItems(prev => {
@@ -135,53 +109,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newItems = [...prev, { ...item, quantity: finalQty }];
       }
       
-      if (user) {
-        // Optimistic UI, fire API in background
-        supabase.from('cart_items')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('product_id', item.productId)
-          .is('variant_id', item.variantId || null)
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data) {
-              supabase.from('cart_items')
-                .update({ quantity: finalQty, updated_at: new Date().toISOString() })
-                .eq('id', data.id)
-                .then();
-            } else {
-              supabase.from('cart_items')
-                .insert({
-                  user_id: user.id,
-                  product_id: item.productId,
-                  variant_id: item.variantId || null,
-                  quantity: finalQty
-                })
-                .then();
-            }
-          });
-      }
-      
       return newItems;
     });
-  }, [user]);
+  }, []);
 
   const removeItem = useCallback(async (productId: string, variantId?: string) => {
     setItems(prev => prev.filter(i => getKey(i.productId, i.variantId) !== getKey(productId, variantId)));
-    
-    if (user) {
-      let query = supabase.from('cart_items').delete()
-        .eq('user_id', user.id)
-        .eq('product_id', productId);
-        
-      if (variantId) {
-        query = query.eq('variant_id', variantId);
-      } else {
-        query = query.is('variant_id', null);
-      }
-      query.then();
-    }
-  }, [user]);
+  }, []);
 
   const updateQuantity = useCallback(async (productId: string, variantId: string | undefined, quantity: number) => {
     if (quantity <= 0) {
@@ -190,38 +124,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     setItems(prev => {
-      let finalQty = quantity;
-      const newItems = prev.map(i => {
+      return prev.map(i => {
         if (getKey(i.productId, i.variantId) === getKey(productId, variantId)) {
-          finalQty = Math.min(quantity, i.stock);
-          return { ...i, quantity: finalQty };
+          return { ...i, quantity: Math.min(quantity, i.stock) };
         }
         return i;
       });
-      
-      if (user) {
-        let query = supabase.from('cart_items').update({ quantity: finalQty })
-          .eq('user_id', user.id)
-          .eq('product_id', productId);
-          
-        if (variantId) {
-          query = query.eq('variant_id', variantId);
-        } else {
-          query = query.is('variant_id', null);
-        }
-        query.then();
-      }
-      
-      return newItems;
     });
-  }, [removeItem, user]);
+  }, [removeItem]);
 
   const clearCart = useCallback(async () => {
     setItems([]);
-    if (user) {
-      supabase.from('cart_items').delete().eq('user_id', user.id).then();
-    }
-  }, [user]);
+  }, []);
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
   const totalPrice = items.reduce((s, i) => s + i.price * i.quantity, 0);
