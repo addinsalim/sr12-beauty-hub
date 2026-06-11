@@ -39,7 +39,7 @@ const CART_KEY = 'sr12_cart';
 const getKey = (productId: string, variantId?: string) => `${productId}::${variantId || ''}`;
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const stored = localStorage.getItem(CART_KEY);
@@ -51,6 +51,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Refs for realtime sync
   const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isRemoteUpdate = React.useRef(false);
+
+  // Clear local cart when logged out
+  useEffect(() => {
+    if (!loading && !user) {
+      setItems([]);
+    }
+  }, [user, loading]);
 
   // Sync with DB when logged in
   useEffect(() => {
