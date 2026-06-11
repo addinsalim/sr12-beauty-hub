@@ -47,6 +47,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch { return []; }
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  // Refs for realtime sync
+  const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isRemoteUpdate = React.useRef(false);
 
   // Sync with DB when logged in
   useEffect(() => {
@@ -81,16 +85,68 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Always update local storage as backup
+  // Setup Realtime Broadcast channel and Cross-tab local sync
   useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === CART_KEY && e.newValue) {
+        try {
+          const newItems = JSON.parse(e.newValue);
+          isRemoteUpdate.current = true;
+          setItems(newItems);
+        } catch (err) { }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    if (!user) return () => window.removeEventListener('storage', handleStorageChange);
+
+    const channel = supabase.channel(`cart_sync_${user.id}`);
+    channelRef.current = channel;
+    
+    channel.on('broadcast', { event: 'cart_updated' }, (payload) => {
+      if (payload.payload && payload.payload.cart) {
+        setItems(prevItems => {
+          const newCartStr = JSON.stringify(payload.payload.cart);
+          const oldCartStr = JSON.stringify(prevItems);
+          if (newCartStr !== oldCartStr) {
+            isRemoteUpdate.current = true;
+            return payload.payload.cart;
+          }
+          return prevItems;
+        });
+      }
+    }).subscribe();
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [user]);
+
+  // Always update local storage as backup and broadcast changes
+  useEffect(() => {
+    if (isRemoteUpdate.current) {
+      isRemoteUpdate.current = false;
+      return; // Skip DB update and broadcast if this update came from remote/storage
+    }
+
     localStorage.setItem(CART_KEY, JSON.stringify(items));
     
     // Also sync to user metadata if logged in
-    // Debounce this in a real app, but for now we just fire it
     if (user && !isSyncing) {
       supabase.auth.updateUser({
         data: { cart: items }
       }).catch(err => console.error('Error updating remote cart:', err));
+
+      // Broadcast to other browsers/devices
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'cart_updated',
+          payload: { cart: items }
+        }).catch(err => console.error('Error broadcasting cart:', err));
+      }
     }
   }, [items, user, isSyncing]);
 
