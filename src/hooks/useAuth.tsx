@@ -12,6 +12,7 @@ interface AuthContextType {
   profile: { full_name: string | null; phone: string | null; avatar_url: string | null } | null;
   hasRole: (role: AppRole) => boolean;
   isAdmin: boolean;
+  hasAddress: boolean;
   refreshProfile: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: any }>;
@@ -29,14 +30,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [profile, setProfile] = useState<AuthContextType['profile']>(null);
+  const [hasAddress, setHasAddress] = useState(false);
 
   const fetchUserData = useCallback(async (userId: string) => {
-    const [rolesRes, profileRes] = await Promise.all([
+    const [rolesRes, profileRes, addressRes] = await Promise.all([
       supabase.from('user_roles').select('role').eq('user_id', userId),
       supabase.from('profiles').select('full_name, phone, avatar_url').eq('user_id', userId).single(),
+      supabase.from('addresses').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     ]);
     if (rolesRes.data) setRoles(rolesRes.data.map((r: any) => r.role as AppRole));
     if (profileRes.data) setProfile(profileRes.data as any);
+    setHasAddress(!!(addressRes.count && addressRes.count > 0));
   }, []);
 
   useEffect(() => {
@@ -108,7 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, fetchUserData]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, roles, profile, hasRole, isAdmin, signIn, signUp, signOut, resetPassword, updatePassword, verifyCurrentPassword, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, loading, roles, profile, hasRole, isAdmin, hasAddress, signIn, signUp, signOut, resetPassword, updatePassword, verifyCurrentPassword, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

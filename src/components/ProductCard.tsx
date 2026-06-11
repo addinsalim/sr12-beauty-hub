@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Star, Shield, Award, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -37,6 +38,7 @@ interface ProductCardProduct {
 
 const ProductCard = ({ product }: { product: ProductCardProduct }) => {
   const { t } = useI18n();
+  const { user, hasAddress } = useAuth();
   const { addItem } = useCart();
   const { isInWishlist, toggle } = useWishlist();
   const { toast } = useToast();
@@ -147,6 +149,16 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
           <button
             onClick={(e) => {
               e.preventDefault();
+              if (!user) {
+                toast({ title: 'Silakan Login', description: 'Anda harus login untuk menambahkan ke keranjang.', variant: 'destructive' });
+                navigate('/login');
+                return;
+              }
+              if (!hasAddress) {
+                toast({ title: 'Alamat Kosong', description: 'Silakan isi alamat pengiriman di Profil Anda terlebih dahulu.', variant: 'destructive' });
+                navigate('/profile?tab=addresses');
+                return;
+              }
               if (product.variants && product.variants.length > 1) {
                 toast({ title: 'Pilih varian', description: 'Silakan pilih varian produk terlebih dahulu.' });
                 navigate(`/products/${product.slug}`);

@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Star, Shield, Award, Minus, Plus, Heart, Share2, Truck, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { fetchProductBySlug, formatPrice } from '@/lib/supabaseHelpers';
+import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +23,7 @@ const categoryImages: Record<string, string> = {
 const ProductDetail = () => {
   const { slug } = useParams();
   const { t } = useI18n();
+  const { user, hasAddress } = useAuth();
   const { addItem } = useCart();
   const { isInWishlist, toggle: toggleWishlist } = useWishlist();
   const navigate = useNavigate();
@@ -293,6 +295,16 @@ const ProductDetail = () => {
             <div className="mb-8 flex flex-wrap gap-3">
               <button
                 onClick={() => {
+                  if (!user) {
+                    toast({ title: 'Silakan Login', description: 'Anda harus login untuk menambahkan ke keranjang.', variant: 'destructive' });
+                    navigate('/login');
+                    return;
+                  }
+                  if (!hasAddress) {
+                    toast({ title: 'Alamat Kosong', description: 'Silakan isi alamat pengiriman di Profil Anda terlebih dahulu.', variant: 'destructive' });
+                    navigate('/profile?tab=addresses');
+                    return;
+                  }
                   if (variants.length > 1 && selectedVariant === null) {
                     toast({ title: 'Pilih varian', description: 'Harap pilih varian produk terlebih dahulu.', variant: 'destructive' });
                     return;
@@ -316,6 +328,16 @@ const ProductDetail = () => {
               
               <button
                 onClick={() => {
+                  if (!user) {
+                    toast({ title: 'Silakan Login', description: 'Anda harus login untuk memproses pesanan.', variant: 'destructive' });
+                    navigate('/login');
+                    return;
+                  }
+                  if (!hasAddress) {
+                    toast({ title: 'Alamat Kosong', description: 'Silakan isi alamat pengiriman di Profil Anda terlebih dahulu.', variant: 'destructive' });
+                    navigate('/profile?tab=addresses');
+                    return;
+                  }
                   if (variants.length > 1 && selectedVariant === null) {
                     toast({ title: 'Pilih varian', description: 'Harap pilih varian produk terlebih dahulu.', variant: 'destructive' });
                     return;

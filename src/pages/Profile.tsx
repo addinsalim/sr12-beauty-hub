@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import {
   User as UserIcon, Camera, MapPin, Plus, Pencil, Trash2, Star, Package,
@@ -67,7 +67,9 @@ const Profile = () => {
   const { user, profile, loading, signOut, refreshProfile, isAdmin } = useAuth();
   const { lang, setLang } = useI18n();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
+  const currentTab = searchParams.get('tab') || 'info';
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -265,6 +267,7 @@ const Profile = () => {
     toast.success(editingAddr ? 'Alamat diperbarui' : 'Alamat ditambahkan');
     setAddrDialog(false);
     loadAddresses();
+    await refreshProfile();
   };
 
   const handleDeleteAddr = async () => {
@@ -274,6 +277,7 @@ const Profile = () => {
     toast.success('Alamat dihapus');
     setDeletingAddr(null);
     loadAddresses();
+    await refreshProfile();
   };
 
   const handleSetDefault = async (a: Address) => {
@@ -368,7 +372,7 @@ const Profile = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="info" className="w-full">
+      <Tabs value={currentTab} onValueChange={(v) => setSearchParams({ tab: v })} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-4">
           <TabsTrigger value="info"><UserIcon className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Info</span></TabsTrigger>
           <TabsTrigger value="addresses"><MapPin className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Alamat</span></TabsTrigger>
