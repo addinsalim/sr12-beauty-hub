@@ -113,13 +113,13 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-10 md:py-14">
-        <div className="grid gap-12 md:grid-cols-2">
+      <div className="container mx-auto px-4 py-6 sm:py-10 md:py-14">
+        <div className="grid gap-8 md:gap-12 md:grid-cols-2">
           {/* ── Image Slider Section ── */}
           <div className="space-y-4">
             {/* Main image with swipe */}
             <div
-              className="relative group overflow-hidden rounded-3xl bg-gradient-gold shadow-glow transition-shadow duration-500 hover:shadow-glow-lg opacity-0 animate-blur-in aspect-square select-none"
+              className="relative group overflow-hidden rounded-3xl bg-gradient-gold shadow-glow transition-shadow duration-500 hover:shadow-glow-lg opacity-0 animate-blur-in aspect-[4/5] sm:aspect-square select-none"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -212,7 +212,7 @@ const ProductDetail = () => {
               )}
             </div>
 
-            <h1 className="mb-3 font-display text-3xl font-bold text-foreground md:text-4xl">
+            <h1 className="mb-3 font-display text-2xl sm:text-3xl font-bold leading-tight text-foreground md:text-4xl">
               {product.name}
             </h1>
 
@@ -228,9 +228,9 @@ const ProductDetail = () => {
             </div>
 
             {/* Price */}
-            <div className="mb-8 border-b border-border/30 pb-8">
-              <div className="flex items-baseline gap-3">
-                <span className="font-display text-3xl font-bold text-gradient-gold">
+            <div className="mb-6 sm:mb-8 border-b border-border/30 pb-6 sm:pb-8">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="font-display text-2xl sm:text-3xl font-bold text-gradient-gold">
                   {formatPrice(finalPrice)}
                 </span>
                 {product.discount > 0 && (
@@ -270,30 +270,32 @@ const ProductDetail = () => {
             )}
 
             {/* Quantity */}
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
               <h3 className="mb-3 text-sm font-semibold text-foreground">Jumlah</h3>
-              <div className="inline-flex items-center rounded-xl glass overflow-hidden border border-border/30">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 py-2.5 text-muted-foreground transition-all hover:text-foreground hover:bg-secondary/50"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="w-14 text-center text-sm font-medium text-foreground">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="px-4 py-2.5 text-muted-foreground transition-all hover:text-foreground hover:bg-secondary/50"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+              <div className="flex items-center flex-wrap gap-4">
+                <div className="inline-flex items-center rounded-xl glass overflow-hidden border border-border/30">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="px-4 py-2.5 text-muted-foreground transition-all hover:text-foreground hover:bg-secondary/50"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="w-14 text-center text-sm font-medium text-foreground">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="px-4 py-2.5 text-muted-foreground transition-all hover:text-foreground hover:bg-secondary/50"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  Stok: {variant?.stock || product.stock}
+                </span>
               </div>
-              <span className="ml-4 text-sm text-muted-foreground">
-                Stok: {variant?.stock || product.stock}
-              </span>
             </div>
 
             {/* Actions */}
-            <div className="mb-8 flex flex-wrap gap-3">
+            <div className="mb-8 flex flex-col sm:flex-row flex-wrap gap-3">
               <button
                 onClick={() => {
                   if (!user) {
@@ -322,7 +324,7 @@ const ProductDetail = () => {
                   }, quantity);
                   toast({ title: 'Ditambahkan ke keranjang', description: `${product.name} x${quantity}` });
                 }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-primary bg-transparent py-3.5 text-sm font-semibold text-primary shadow-glow transition-all duration-300 hover:bg-primary/5 hover:scale-[1.02]"
+                className="flex w-full sm:flex-1 items-center justify-center gap-2 rounded-full border-2 border-primary bg-transparent py-3.5 text-sm font-semibold text-primary shadow-glow transition-all duration-300 hover:bg-primary/5 hover:scale-[1.02]"
               >
                 <ShoppingBag className="h-4 w-4" /> {t.products.addToCart}
               </button>
@@ -356,21 +358,23 @@ const ProductDetail = () => {
                   };
                   navigate('/checkout', { state: { buyNowItem } });
                 }}
-                className="shimmer flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:scale-[1.02]"
+                className="shimmer flex w-full sm:flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:scale-[1.02]"
               >
                 Beli Sekarang
               </button>
               
-              <button
+              <div className="flex w-full sm:w-auto justify-center sm:justify-start gap-3 mt-2 sm:mt-0">
+                <button
                 onClick={() => toggleWishlist(product.id, product.name)}
                 className={`flex h-12 w-12 items-center justify-center rounded-full glass border border-border/30 transition-all duration-300 hover:shadow-glow hover:scale-110 shrink-0 ${isInWishlist(product.id) ? 'text-rose-gold' : 'text-muted-foreground hover:text-rose-gold'}`}
                 aria-label="Wishlist"
               >
                 <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
               </button>
-              <button className="flex h-12 w-12 items-center justify-center rounded-full glass border border-border/30 text-muted-foreground transition-all duration-300 hover:text-foreground hover:shadow-glow hover:scale-110 shrink-0">
-                <Share2 className="h-5 w-5" />
-              </button>
+                <button className="flex h-12 w-12 items-center justify-center rounded-full glass border border-border/30 text-muted-foreground transition-all duration-300 hover:text-foreground hover:shadow-glow hover:scale-110 shrink-0">
+                  <Share2 className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Info badges */}

@@ -109,7 +109,10 @@ const Navbar = () => {
             </div>
 
             <button
-              onClick={() => setIsSearchOpen(true)}
+              onClick={() => {
+                setIsOpen(true);
+                setTimeout(() => document.getElementById('mobile-search-input')?.focus(), 100);
+              }}
               className="rounded-full p-2.5 text-muted-foreground active:bg-secondary sm:hidden"
             >
               <Search className="h-5 w-5" />
@@ -201,6 +204,7 @@ const Navbar = () => {
               <div className="flex items-center rounded-xl border border-border bg-secondary/50 px-3.5 py-2.5">
                 <Search className="mr-2.5 h-4 w-4 text-muted-foreground" />
                 <input
+                  id="mobile-search-input"
                   type="text"
                   placeholder={t.nav.search}
                   value={searchQuery}
