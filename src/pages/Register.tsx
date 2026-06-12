@@ -46,7 +46,7 @@ const Register = () => {
           <p className="mt-2 text-sm text-muted-foreground">Buat akun SR12 Store Anda</p>
         </div>
 
-        <div className="rounded-3xl glass-strong p-8 shadow-glow opacity-0 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="rounded-3xl glass-strong p-5 sm:p-8 shadow-glow opacity-0 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">{t.auth.name}</label>

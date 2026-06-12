@@ -475,7 +475,7 @@ const Checkout = () => {
 
           {/* Summary Sidebar */}
           <div className="lg:col-span-1">
-            <div className="sticky top-28 rounded-xl border border-border bg-card p-5">
+            <div className="rounded-xl border border-border bg-card p-4 sm:p-5 lg:sticky lg:top-28">
               <h2 className="font-display text-lg font-bold text-card-foreground mb-4">Ringkasan Pesanan</h2>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">

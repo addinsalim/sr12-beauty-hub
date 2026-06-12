@@ -74,14 +74,14 @@ const Products = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header — animated gradient */}
-      <div className="relative overflow-hidden py-16">
+      <div className="relative overflow-hidden py-10 sm:py-16">
         <div className="absolute inset-0 bg-gradient-modern" />
         <div className="absolute inset-0 bg-background/50 backdrop-blur-sm" />
         <div className="container relative mx-auto px-4 text-center">
-          <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl opacity-0 animate-blur-in">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground md:text-5xl opacity-0 animate-blur-in">
             {t.nav.products}
           </h1>
-          <p className="mt-3 text-muted-foreground opacity-0 animate-blur-in" style={{ animationDelay: '0.1s' }}>
+          <p className="mt-3 text-sm sm:text-base text-muted-foreground opacity-0 animate-blur-in" style={{ animationDelay: '0.1s' }}>
             {categoryFilter
               ? categories.find(c => c.value === categoryFilter)?.label
               : t.products.subtitle}

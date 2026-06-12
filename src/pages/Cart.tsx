@@ -34,29 +34,29 @@ const Cart = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background pb-20 pt-10">
+        <div className="min-h-screen bg-background pb-10 pt-6 sm:pt-10">
             <div className="container mx-auto px-4">
-                <div className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <h1 className="font-display text-4xl font-bold text-foreground accent-line">
+                <div className="mb-6 sm:mb-10 flex flex-row items-center justify-between gap-4">
+                    <h1 className="font-display text-2xl sm:text-4xl font-bold text-foreground accent-line">
                         {t.nav.cart || 'Keranjang'} ({totalItems})
                     </h1>
-                    <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" /> Hapus Semua
+                    <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0">
+                        <Trash2 className="mr-2 h-4 w-4" /> Hapus
                     </Button>
                 </div>
 
-                <div className="grid gap-10 lg:grid-cols-3">
+                <div className="grid gap-6 sm:gap-10 lg:grid-cols-3">
                     {/* Cart Items */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                         {items.map((item, i) => {
                             const key = `${item.productId}::${item.variantId || ''}`;
                             return (
                                 <div
                                     key={key}
-                                    className="flex flex-col sm:flex-row items-center gap-6 rounded-3xl glass p-6 shadow-card transition-all duration-300 hover:shadow-glow opacity-0 animate-slide-up"
+                                    className="flex flex-row items-center gap-3 sm:gap-6 rounded-2xl sm:rounded-3xl glass p-3 sm:p-6 shadow-card transition-all duration-300 hover:shadow-glow opacity-0 animate-slide-up"
                                     style={{ animationDelay: `${i * 0.1}s` }}
                                 >
-                                    <Link to={`/products/${item.slug}`} className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-gradient-gold">
+                                    <Link to={`/products/${item.slug}`} className="h-20 w-20 sm:h-28 sm:w-28 shrink-0 overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-gold">
                                         <img
                                             src={item.image}
                                             alt={item.name}
@@ -114,7 +114,7 @@ const Cart = () => {
 
                     {/* Checkout Summary */}
                     <div className="lg:col-span-1">
-                        <div className="sticky top-28 rounded-3xl glass-strong border border-border/40 p-8 shadow-glow opacity-0 animate-slide-in-right" style={{ animationDelay: '0.3s' }}>
+                        <div className="rounded-2xl sm:rounded-3xl glass-strong border border-border/40 p-5 sm:p-8 shadow-glow opacity-0 animate-slide-in-right lg:sticky lg:top-28" style={{ animationDelay: '0.3s' }}>
                             <h2 className="mb-6 font-display text-xl font-bold text-foreground">Ringkasan Belanja</h2>
 
                             <div className="space-y-4 border-b border-border/30 pb-6 text-sm">
