@@ -64,30 +64,32 @@ const MyVouchers = () => {
           ) : (
             <div className="space-y-3">
               {vouchers.map(v => (
-                <div key={v.id} className="rounded-2xl glass p-4 sm:p-5 flex items-center gap-4 border-l-4 border-primary">
-                  <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Ticket className="h-7 w-7 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-display text-lg font-bold text-foreground">
-                        {v.discount_type === 'percent' ? `${v.discount_value}% OFF` : `${formatPrice(v.discount_value)} OFF`}
-                      </span>
-                      <Badge variant="outline" className="font-mono text-xs">{v.code}</Badge>
+                <div key={v.id} className="rounded-2xl glass p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border-l-4 border-primary">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Ticket className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                     </div>
-                    {v.description && <p className="text-xs text-muted-foreground line-clamp-1">{v.description}</p>}
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>Min. {formatPrice(v.min_purchase)}</span>
-                      {v.valid_until && (
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(v.valid_until).toLocaleDateString('id-ID')}</span>
-                      )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="font-display text-base sm:text-lg font-bold text-foreground">
+                          {v.discount_type === 'percent' ? `${v.discount_value}% OFF` : `${formatPrice(v.discount_value)} OFF`}
+                        </span>
+                        <Badge variant="outline" className="font-mono text-[10px] sm:text-xs">{v.code}</Badge>
+                      </div>
+                      {v.description && <p className="text-xs text-muted-foreground line-clamp-1">{v.description}</p>}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] sm:text-xs text-muted-foreground">
+                        <span>Min. {formatPrice(v.min_purchase)}</span>
+                        {v.valid_until && (
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(v.valid_until).toLocaleDateString('id-ID')}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <button
                     onClick={() => copyCode(v.code)}
-                    className="rounded-full bg-primary text-primary-foreground px-4 py-2 text-xs font-medium flex items-center gap-1.5 hover:opacity-90 shrink-0"
+                    className="w-full sm:w-auto rounded-full bg-primary text-primary-foreground py-2 px-4 text-xs font-medium flex items-center justify-center gap-1.5 hover:opacity-90 shrink-0"
                   >
-                    <Copy className="h-3.5 w-3.5" /> Salin
+                    <Copy className="h-3.5 w-3.5" /> Salin Kode
                   </button>
                 </div>
               ))}

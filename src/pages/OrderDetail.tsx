@@ -190,16 +190,16 @@ const OrderDetail = () => {
       </div>
 
       <div className="container mx-auto px-4 py-6 sm:py-10 max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-6">
           <Link to="/my-orders" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
           {canCancel && (
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive border-destructive/40 hover:bg-destructive/10"
+              className="text-destructive border-destructive/40 hover:bg-destructive/10 w-full sm:w-auto justify-center"
               onClick={() => setShowCancelDialog(true)}
             >
-              <XCircle className="mr-1 h-4 w-4" /> Batalkan Pesanan
+              <XCircle className="mr-1.5 h-4 w-4" /> Batalkan Pesanan
             </Button>
           )}
         </div>
@@ -222,13 +222,13 @@ const OrderDetail = () => {
             <h2 className="flex items-center gap-2 text-base font-bold text-card-foreground mb-3"><Package className="h-4 w-4 text-primary" /> Produk</h2>
             <div className="space-y-2">
               {items.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-border last:border-0">
-                  <div>
-                    <p className="font-medium text-card-foreground">{item.products?.name || 'Produk'}</p>
+                <div key={item.id} className="flex items-start justify-between text-sm py-2.5 border-b border-border last:border-0 gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-card-foreground truncate sm:whitespace-normal">{item.products?.name || 'Produk'}</p>
                     {item.variants?.name && <p className="text-xs text-muted-foreground">{item.variants.name}</p>}
-                    <p className="text-xs text-muted-foreground">x{item.quantity} × {formatPrice(Number(item.price))}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">x{item.quantity} × {formatPrice(Number(item.price))}</p>
                   </div>
-                  <span className="font-medium text-foreground">{formatPrice(Number(item.total))}</span>
+                  <span className="font-medium text-foreground shrink-0">{formatPrice(Number(item.total))}</span>
                 </div>
               ))}
             </div>

@@ -91,7 +91,7 @@ const ChangePassword = () => {
           <p className="mt-2 text-sm text-muted-foreground">Perbarui keamanan akun Anda</p>
         </div>
 
-        <div className="rounded-3xl glass-strong p-8 shadow-glow opacity-0 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="rounded-3xl glass-strong p-5 sm:p-8 shadow-glow opacity-0 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           {done ? (
             /* ─── Success State ─── */
             <div className="flex flex-col items-center gap-5 text-center py-4">

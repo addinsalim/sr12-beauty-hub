@@ -161,7 +161,7 @@ const MyOrders = () => {
                   <Link to={`/orders/${order.id}`} className="flex items-center gap-3 p-4">
                     <Package className="h-8 w-8 shrink-0 text-primary/60" />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
                         <span className="font-mono text-sm font-medium text-card-foreground">{order.order_number}</span>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.color}`}>{s.label}</span>
                       </div>

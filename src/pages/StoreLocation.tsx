@@ -43,7 +43,7 @@ const StoreLocation = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden py-20">
+      <div className="relative overflow-hidden py-12 sm:py-20">
         <div className="absolute inset-0 bg-gradient-modern" />
         <div className="absolute top-8 right-16 h-64 w-64 rounded-full bg-gold/10 blur-3xl animate-float" />
         <div
@@ -56,7 +56,7 @@ const StoreLocation = () => {
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 shadow-glow backdrop-blur-sm ring-1 ring-primary/30">
             <MapPin className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl opacity-0 animate-blur-in">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground md:text-5xl opacity-0 animate-blur-in">
             Lokasi Toko Kami
           </h1>
           <p
@@ -137,13 +137,13 @@ const StoreLocation = () => {
               </div>
 
               {/* Tombol navigasi */}
-              <div className="flex flex-wrap items-center gap-3 p-4 border-t border-border/30 bg-card/50">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 border-t border-border/30 bg-card/50">
                 <a
                   id="btn-open-googlemaps"
                   href={STORE.googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow hover:opacity-90 hover:scale-105 transition-all duration-200"
+                  className="flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow hover:opacity-90 hover:scale-105 transition-all duration-200 w-full sm:w-auto text-center"
                 >
                   <Navigation className="h-4 w-4" />
                   Buka Google Maps
@@ -154,7 +154,7 @@ const StoreLocation = () => {
                   href={STORE.wazeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/15 hover:scale-105 transition-all duration-200"
+                  className="flex items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/15 hover:scale-105 transition-all duration-200 w-full sm:w-auto text-center"
                 >
                   <Car className="h-4 w-4" />
                   Buka Waze
@@ -306,7 +306,7 @@ const StoreLocation = () => {
           <div className="absolute inset-0 bg-gradient-modern opacity-80" />
           <div className="absolute top-0 right-0 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
           <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-rose-gold/10 blur-2xl" />
-          <div className="relative px-8 py-10 text-center">
+          <div className="relative px-4 py-8 sm:px-8 sm:py-10 text-center">
             <p className="text-3xl mb-2">🛍️</p>
             <h3 className="font-display text-2xl font-bold text-foreground mb-2">
               Tidak bisa datang langsung?
@@ -315,11 +315,11 @@ const StoreLocation = () => {
               Belanja online tetap mudah dan aman! Produk SR12 dikirim ke seluruh Indonesia
               dengan ekspedisi terpercaya dalam 1–5 hari kerja.
             </p>
-            <div className="flex flex-wrap justify-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
               <a
                 id="btn-belanja-online"
                 href="/products"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-bold text-primary-foreground shadow-glow hover:opacity-90 hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-bold text-primary-foreground shadow-glow hover:opacity-90 hover:scale-105 transition-all duration-200 w-full sm:w-auto"
               >
                 Belanja Online Sekarang
               </a>
@@ -328,7 +328,7 @@ const StoreLocation = () => {
                 href="https://wa.me/6281100000000?text=Halo+SR12+Beauty+Hub%2C+saya+mau+pesan+produk"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-8 py-3 text-sm font-bold text-primary hover:bg-primary/15 hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-8 py-3 text-sm font-bold text-primary hover:bg-primary/15 hover:scale-105 transition-all duration-200 w-full sm:w-auto"
               >
                 Order via WhatsApp 📱
               </a>
