@@ -113,13 +113,15 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 sm:py-10 md:py-14">
-        <div className="grid gap-8 md:gap-12 md:grid-cols-2">
+      {/* ── Layout: Full-bleed image on mobile, 2-col on desktop ── */}
+      <div className="md:container md:mx-auto md:px-4 md:py-14">
+        <div className="grid md:gap-12 md:grid-cols-2">
+
           {/* ── Image Slider Section ── */}
-          <div className="space-y-4">
-            {/* Main image with swipe */}
+          <div className="space-y-3 md:space-y-4">
+            {/* Main image — full width on mobile, rounded on desktop */}
             <div
-              className="relative group overflow-hidden rounded-3xl bg-gradient-gold shadow-glow transition-shadow duration-500 hover:shadow-glow-lg opacity-0 animate-blur-in aspect-square max-h-[350px] sm:max-h-none mx-auto sm:mx-0 select-none"
+              className="relative group overflow-hidden bg-gradient-gold shadow-glow md:rounded-3xl opacity-0 animate-blur-in w-full aspect-square select-none"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -132,7 +134,7 @@ const ProductDetail = () => {
                 draggable={false}
               />
 
-              {/* Arrow buttons — hanya tampil jika > 1 gambar */}
+              {/* Arrow buttons */}
               {total > 1 && (
                 <>
                   <button
@@ -176,9 +178,9 @@ const ProductDetail = () => {
               )}
             </div>
 
-            {/* Thumbnail strip — horizontally scrollable */}
+            {/* Thumbnail strip — full-width scroll on mobile */}
             {total > 1 && (
-              <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide snap-x">
+              <div className="flex gap-2 overflow-x-auto px-4 md:px-0 pb-1 scrollbar-hide snap-x">
                 {allImages.map((url: string, i: number) => (
                   <button
                     key={i}
@@ -197,7 +199,7 @@ const ProductDetail = () => {
           </div>
 
           {/* Info */}
-          <div className="flex flex-col opacity-0 animate-slide-up" style={{ animationDelay: '0.15s' }}>
+          <div className="flex flex-col opacity-0 animate-slide-up px-4 md:px-0" style={{ animationDelay: '0.15s' }}>
             {/* Certifications */}
             <div className="mb-4 flex items-center gap-3">
               {product.bpom && (
@@ -406,8 +408,8 @@ const ProductDetail = () => {
         </div>
 
         {/* Reviews Section */}
-        <div className="mt-20">
-          <h2 className="mb-8 font-display text-2xl font-bold text-foreground accent-line opacity-0 animate-slide-up">Ulasan Produk</h2>
+        <div className="mt-10 sm:mt-20 px-4 md:px-0">
+          <h2 className="mb-6 sm:mb-8 font-display text-xl sm:text-2xl font-bold text-foreground accent-line opacity-0 animate-slide-up">Ulasan Produk</h2>
           <div className="opacity-0 animate-slide-up" style={{ animationDelay: '0.2s' }}>
             <ProductReviews productId={product.id} onReviewAdded={() => {
               fetchProductBySlug(slug!).then(data => setProduct(data));
