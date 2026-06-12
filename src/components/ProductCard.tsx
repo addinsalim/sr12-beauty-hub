@@ -104,7 +104,7 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
             key={imgIdx}
             src={imgSrc}
             alt={product.name}
-            className="h-full w-full object-cover transition-all duration-500"
+            className="h-full w-full object-contain bg-white/40 backdrop-blur-sm transition-all duration-500"
             draggable={false}
           />
         </Link>
