@@ -27,14 +27,19 @@ const AdminUsers = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      // 1. Fetch profiles and roles
-      const { data: profiles, error: pError } = await supabase
-        .from('profiles')
-        .select('*, user_roles(id, role)')
-        .order('created_at', { ascending: false });
+      // 1. Fetch profiles and roles separately
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('user_roles').select('*')
+      ]);
 
-      if (pError) throw pError;
-      if (!profiles || profiles.length === 0) {
+      if (profilesRes.error) throw profilesRes.error;
+      if (rolesRes.error) throw rolesRes.error;
+
+      const profiles = profilesRes.data || [];
+      const roles = rolesRes.data || [];
+
+      if (profiles.length === 0) {
         setUsers([]);
         return;
       }
@@ -53,9 +58,11 @@ const AdminUsers = () => {
         ordersCountMap.set(o.user_id, (ordersCountMap.get(o.user_id) || 0) + 1);
       });
 
+      const rolesMap = new Map(roles.map(r => [r.user_id, r]));
+
       // 3. Enrich users object
       const enriched = profiles.map(p => {
-        const primaryRoleObj = p.user_roles?.[0];
+        const primaryRoleObj = rolesMap.get(p.user_id);
         return {
           ...p,
           role: primaryRoleObj?.role || 'customer',
@@ -226,7 +233,7 @@ const AdminUsers = () => {
               <p className="mt-1 text-xl sm:text-2xl font-bold text-foreground">{courierCount}</p>
             </div>
             <div className="p-2.5 rounded-lg bg-orange-500/10 text-orange-500">
-              <Truck className="h-5 w-5" />
+              <Phone className="h-5 w-5" />
             </div>
           </div>
         </div>
@@ -400,8 +407,8 @@ const AdminUsers = () => {
                       </div>
                       <div>
                         <p className="font-semibold text-foreground flex items-center gap-1.5">
-                          {u.full_name || '-'}
                           {isCurrentUser && <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-normal">Anda</span>}
+                          {u.full_name || '-'}
                         </p>
                         <span className={`inline-block mt-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(u.role)}`}>
                           {u.role}
@@ -584,4 +591,3 @@ const AdminUsers = () => {
 };
 
 export default AdminUsers;
-
