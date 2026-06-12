@@ -40,18 +40,20 @@ const AdminProducts = () => {
         { slug: 'skincare', name: 'Skincare', description: 'Rangkaian perawatan kulit SR12' },
         { slug: 'herbal',   name: 'Herbal',   description: 'Produk herbal alami SR12' },
       ];
-      const mergedCats = [...cats];
+      const mergedCats: any[] = [...cats];
       for (const req of REQUIRED_CATEGORIES) {
         if (!mergedCats.find(c => c.slug === req.slug)) {
           // Coba insert ke DB, jika gagal tetap tampilkan sebagai fallback lokal
           try {
-            const { data: inserted } = await (await import('@/integrations/supabase/client')).supabase
+            const { data: inserted, error } = await supabase
               .from('categories')
               .insert({ name: req.name, slug: req.slug, description: req.description })
               .select()
               .single();
+            
+            if (error) throw error;
             if (inserted) mergedCats.push(inserted);
-          } catch {
+          } catch (err: any) {
             mergedCats.push({ id: `local-${req.slug}`, ...req });
           }
         }
