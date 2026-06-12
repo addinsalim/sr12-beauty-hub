@@ -99,7 +99,7 @@ const ProductCard = ({ product }: { product: ProductCardProduct }) => {
           startX.current = null;
         }}
       >
-        <Link to={`/products/${product.slug}`}>
+        <Link to={`/products/${product.slug}`} className="block h-full w-full">
           <img
             key={imgIdx}
             src={imgSrc}

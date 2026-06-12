@@ -58,9 +58,9 @@ const FeaturedProducts = () => {
         </div>
 
         {loading ? (
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-6 lg:grid-cols-4 sm:overflow-visible sm:pb-0">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 pb-4 sm:pb-0">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="min-w-[75vw] sm:min-w-0 shrink-0 aspect-[3/4] animate-pulse rounded-2xl bg-muted/40" />
+              <div key={i} className="aspect-[3/4] animate-pulse rounded-2xl bg-muted/40" />
             ))}
           </div>
         ) : products.length === 0 ? (
@@ -69,9 +69,9 @@ const FeaturedProducts = () => {
             <p className="text-sm text-muted-foreground">Belum ada produk tersedia.</p>
           </div>
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-6 lg:grid-cols-4 sm:overflow-visible sm:pb-0">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 pb-4 sm:pb-0">
             {products.map((product, i) => (
-              <div key={product.id} className="min-w-[75vw] shrink-0 snap-center sm:min-w-0 sm:shrink opacity-0 animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
+              <div key={product.id} className="opacity-0 animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
                 <ProductCard product={product} />
               </div>
             ))}
