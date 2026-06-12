@@ -15,9 +15,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Lora', 'serif'],
-        display: ['Playfair Display', 'serif'],
-        body: ['Lora', 'serif'],
+        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'sans-serif'],
+        body: ['"Plus Jakarta Sans"', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
