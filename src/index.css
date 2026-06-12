@@ -108,10 +108,12 @@
   body {
     @apply bg-background text-foreground font-body antialiased;
     overflow-x: hidden;
+    letter-spacing: -0.015em;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
+    letter-spacing: -0.025em;
   }
 
   ::selection {

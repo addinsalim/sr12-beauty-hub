@@ -14,6 +14,17 @@ export default {
       },
     },
     extend: {
+      fontSize: {
+        xs: ["0.825rem", { lineHeight: "1.25rem" }],
+        sm: ["0.925rem", { lineHeight: "1.4rem" }],
+        base: ["1.025rem", { lineHeight: "1.6rem" }],
+        lg: ["1.15rem", { lineHeight: "1.75rem" }],
+        xl: ["1.325rem", { lineHeight: "1.85rem" }],
+        "2xl": ["1.6rem", { lineHeight: "2.1rem" }],
+        "3xl": ["2.0rem", { lineHeight: "2.4rem" }],
+        "4xl": ["2.4rem", { lineHeight: "2.7rem" }],
+        "5xl": ["3.2rem", { lineHeight: "1" }],
+      },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'sans-serif'],
         display: ['"Plus Jakarta Sans"', 'sans-serif'],
