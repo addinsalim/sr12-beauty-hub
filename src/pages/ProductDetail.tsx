@@ -104,12 +104,12 @@ const ProductDetail = () => {
     <div className="min-h-screen bg-background">
       {/* Breadcrumb — glass */}
       <div className="glass flex items-center justify-center border-b border-border/30">
-        <div className="container mx-auto flex items-center gap-2 px-4 py-3.5 text-sm text-muted-foreground">
-          <Link to="/" className="transition-colors hover:text-primary">Home</Link>
-          <span className="text-border">/</span>
-          <Link to="/products" className="transition-colors hover:text-primary">{t.nav.products}</Link>
-          <span className="text-border">/</span>
-          <span className="text-foreground font-medium">{product.name}</span>
+        <div className="container mx-auto flex items-center gap-2 px-4 py-3.5 text-sm text-muted-foreground overflow-hidden">
+          <Link to="/" className="transition-colors hover:text-primary whitespace-nowrap shrink-0">Home</Link>
+          <span className="text-border shrink-0">/</span>
+          <Link to="/products" className="transition-colors hover:text-primary whitespace-nowrap shrink-0">{t.nav.products}</Link>
+          <span className="text-border shrink-0">/</span>
+          <span className="text-foreground font-medium truncate">{product.name}</span>
         </div>
       </div>
 
