@@ -184,7 +184,7 @@ const ProductDetail = () => {
                   <button
                     key={i}
                     onClick={() => setSelectedImageIndex(i)}
-                    className={`h-20 w-20 shrink-0 snap-start overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
+                    className={`h-16 w-16 sm:h-20 sm:w-20 shrink-0 snap-start overflow-hidden rounded-xl sm:rounded-2xl border-2 transition-all duration-300 ${
                       selectedImageIndex === i
                         ? 'border-primary ring-2 ring-primary/50 shadow-glow scale-[1.05]'
                         : 'border-transparent glass hover:border-primary/50 hover:shadow-card'
@@ -213,7 +213,7 @@ const ProductDetail = () => {
               )}
             </div>
 
-            <h1 className="mb-3 font-display text-2xl sm:text-3xl font-bold leading-tight text-foreground md:text-4xl">
+            <h1 className="mb-2 sm:mb-3 font-display text-[22px] sm:text-3xl font-bold leading-tight text-foreground md:text-4xl">
               {product.name}
             </h1>
 
@@ -256,7 +256,7 @@ const ProductDetail = () => {
                     <button
                       key={v.id}
                       onClick={() => setSelectedVariant(i)}
-                      className={`rounded-xl border px-5 py-2.5 text-sm font-medium transition-all duration-300 ${
+                      className={`rounded-xl border px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-medium transition-all duration-300 ${
                         selectedVariant === i
                           ? 'border-primary bg-primary/10 text-primary shadow-glow'
                           : 'border-transparent glass text-foreground hover:border-primary/50 hover:shadow-card'
@@ -336,7 +336,7 @@ const ProductDetail = () => {
                 }}
                 className="flex flex-1 sm:w-full sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-full border-2 border-primary bg-transparent py-3 sm:py-3.5 text-[13px] sm:text-sm font-semibold text-primary shadow-glow transition-all duration-300 hover:bg-primary/5 hover:scale-[1.02] leading-tight"
               >
-                <ShoppingBag className="h-4 w-4 shrink-0 hidden sm:block" /> Tambah <span className="hidden sm:inline">ke Keranjang</span>
+                <ShoppingBag className="h-4 w-4 shrink-0" /> Tambah <span className="hidden sm:inline">ke Keranjang</span>
               </button>
               
               <button
@@ -381,27 +381,27 @@ const ProductDetail = () => {
             </div>
 
             {/* Info badges */}
-            <div className="flex flex-wrap gap-4 rounded-2xl glass p-5">
-              <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                <Truck className="h-4 w-4 text-primary" /> Free Ongkir Rp200rb+
+            <div className="flex flex-wrap gap-3 sm:gap-4 rounded-2xl glass p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground w-full sm:w-auto">
+                <Truck className="h-4 w-4 text-primary shrink-0" /> Free Ongkir Rp200rb+
               </div>
-              <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4 text-primary" /> Produk Original
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground w-full sm:w-auto">
+                <Shield className="h-4 w-4 text-primary shrink-0" /> Produk Original
               </div>
             </div>
 
             {/* Description */}
-            <div className="mt-10">
-              <h3 className="mb-4 font-display text-lg font-semibold text-foreground accent-line">Deskripsi</h3>
-              <div className="leading-relaxed text-muted-foreground whitespace-pre-wrap text-justify">{product.description}</div>
-              <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
-                <div className="rounded-xl glass p-4">
+            <div className="mt-8 sm:mt-10">
+              <h3 className="mb-3 sm:mb-4 font-display text-base sm:text-lg font-semibold text-foreground accent-line">Deskripsi</h3>
+              <div className="leading-relaxed text-sm sm:text-base text-muted-foreground whitespace-pre-wrap text-justify">{product.description}</div>
+              <div className="mt-4 sm:mt-5 grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+                <div className="rounded-xl glass p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center">
                   <span className="text-muted-foreground">Berat:</span>
-                  <span className="ml-1 font-medium text-foreground">{product.weight}g</span>
+                  <span className="sm:ml-1 font-semibold sm:font-medium text-foreground">{product.weight}g</span>
                 </div>
-                <div className="rounded-xl glass p-4">
+                <div className="rounded-xl glass p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center">
                   <span className="text-muted-foreground">Expired:</span>
-                  <span className="ml-1 font-medium text-foreground">{product.expired_date || '-'}</span>
+                  <span className="sm:ml-1 font-semibold sm:font-medium text-foreground">{product.expired_date || '-'}</span>
                 </div>
               </div>
             </div>
