@@ -6,6 +6,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatPrice } from '@/lib/supabaseHelpers';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import productParfum from '@/assets/product-parfum.png';
+import productSkincare from '@/assets/product-skincare.png';
+import productKosmetik from '@/assets/product-kosmetik.png';
+
+const categoryImages: Record<string, string> = {
+  parfum: productParfum,
+  skincare: productSkincare,
+  kosmetik: productKosmetik,
+};
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending_payment: { label: 'Menunggu Pembayaran', color: 'bg-yellow-100 text-yellow-800' },
@@ -43,7 +52,7 @@ const OrderDetail = () => {
       setLoading(true);
       const [orderRes, itemsRes, paymentRes, shipmentRes] = await Promise.all([
         supabase.from('orders').select('*').eq('id', id).single(),
-        supabase.from('order_items').select('*, products:product_id(name, slug), variants:variant_id(name)').eq('order_id', id),
+        supabase.from('order_items').select('*, products:product_id(name, slug, product_images(image_url, is_primary), categories(slug)), variants:variant_id(name)').eq('order_id', id),
         supabase.from('payments').select('*').eq('order_id', id).maybeSingle(),
         supabase.from('shipments').select('*').eq('order_id', id).maybeSingle(),
       ]);
@@ -176,16 +185,25 @@ const OrderDetail = () => {
   if (loading) return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!order) return <div className="container mx-auto px-4 py-20 text-center"><p className="text-muted-foreground">Pesanan tidak ditemukan.</p><Link to="/my-orders" className="mt-4 inline-flex items-center gap-2 text-primary"><ArrowLeft className="h-4 w-4" /> Kembali</Link></div>;
 
+  const getProductImg = (item: any) => {
+    const images = item.products?.product_images || [];
+    const primary = images.find((i: any) => i.is_primary)?.image_url;
+    const fallback = categoryImages[item.products?.categories?.slug] || productParfum;
+    return primary || images[0]?.image_url || fallback;
+  };
+
   const status = STATUS_LABELS[order.status] || { label: order.status, color: 'bg-secondary text-foreground' };
   const canCancel = CANCELLABLE_STATUSES.includes(order.status);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-secondary/30">
-        <div className="container mx-auto flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-primary">Home</Link><span>/</span>
-          <Link to="/my-orders" className="hover:text-primary">Pesanan Saya</Link><span>/</span>
-          <span className="text-foreground">{order.order_number}</span>
+        <div className="container mx-auto flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground overflow-hidden">
+          <Link to="/" className="hover:text-primary whitespace-nowrap shrink-0">Home</Link>
+          <span className="text-border shrink-0">/</span>
+          <Link to="/my-orders" className="hover:text-primary whitespace-nowrap shrink-0">Pesanan Saya</Link>
+          <span className="text-border shrink-0">/</span>
+          <span className="text-foreground font-medium truncate">{order.order_number}</span>
         </div>
       </div>
 
@@ -218,19 +236,25 @@ const OrderDetail = () => {
           </div>
 
           {/* Items */}
-          <div className="rounded-xl border border-border bg-card p-5 print:border-0 print:p-0">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-5 print:border-0 print:p-0">
             <h2 className="flex items-center gap-2 text-base font-bold text-card-foreground mb-3"><Package className="h-4 w-4 text-primary" /> Produk</h2>
-            <div className="space-y-2">
-              {items.map((item: any) => (
-                <div key={item.id} className="flex items-start justify-between text-sm py-2.5 border-b border-border last:border-0 gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-card-foreground truncate sm:whitespace-normal">{item.products?.name || 'Produk'}</p>
-                    {item.variants?.name && <p className="text-xs text-muted-foreground">{item.variants.name}</p>}
-                    <p className="text-xs text-muted-foreground mt-0.5">x{item.quantity} × {formatPrice(Number(item.price))}</p>
+            <div className="space-y-3">
+              {items.map((item: any) => {
+                const img = getProductImg(item);
+                return (
+                  <div key={item.id} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
+                    <img src={img} alt={item.products?.name} className="h-14 w-14 rounded-lg object-cover bg-secondary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <Link to={`/products/${item.products?.slug}`} className="text-sm font-medium text-card-foreground hover:text-primary transition-colors line-clamp-2 block leading-snug">
+                        {item.products?.name || 'Produk'}
+                      </Link>
+                      {item.variants?.name && <p className="text-xs text-muted-foreground mt-0.5">{item.variants.name}</p>}
+                      <p className="text-xs text-muted-foreground mt-0.5">x{item.quantity} × {formatPrice(Number(item.price))}</p>
+                    </div>
+                    <span className="text-sm font-bold text-primary shrink-0">{formatPrice(Number(item.total))}</span>
                   </div>
-                  <span className="font-medium text-foreground shrink-0">{formatPrice(Number(item.total))}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

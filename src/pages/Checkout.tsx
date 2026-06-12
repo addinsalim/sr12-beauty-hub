@@ -319,7 +319,7 @@ const Checkout = () => {
                   <div key={`${item.productId}::${item.variantId}`} className="flex gap-3 items-center">
                     <img src={item.image} alt={item.name} className="h-14 w-14 rounded-lg object-cover bg-secondary" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-card-foreground line-clamp-1">{item.name}</p>
+                      <p className="text-sm font-medium text-card-foreground line-clamp-2">{item.name}</p>
                       {item.variantName && <p className="text-xs text-muted-foreground">{item.variantName}</p>}
                       <p className="text-xs text-muted-foreground">x{item.quantity}</p>
                     </div>

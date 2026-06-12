@@ -67,7 +67,7 @@ const Cart = () => {
                                     <div className="flex flex-1 flex-col w-full">
                                         <div className="mb-1 flex items-start justify-between gap-2">
                                             <div className="min-w-0">
-                                                <Link to={`/products/${item.slug}`} className="font-display text-lg font-bold text-foreground transition-colors hover:text-primary line-clamp-2">
+                                                <Link to={`/products/${item.slug}`} className="font-display text-sm sm:text-lg font-bold text-foreground transition-colors hover:text-primary line-clamp-2">
                                                     {item.name}
                                                 </Link>
                                                 {item.variantName && (
@@ -82,23 +82,23 @@ const Cart = () => {
                                             </button>
                                         </div>
 
-                                        <div className="mt-auto flex flex-wrap items-center justify-between gap-4 pt-4">
+                                        <div className="mt-auto flex items-center justify-between gap-2 pt-3 sm:pt-4">
                                             <div className="inline-flex items-center rounded-xl glass-strong border border-border/30 overflow-hidden">
                                                 <button
                                                     onClick={() => updateQuantity(item.productId, item.variantId, item.quantity - 1)}
-                                                    className="px-3 py-1.5 transition-colors hover:bg-secondary/50 hover:text-primary"
+                                                    className="p-1.5 sm:px-3 sm:py-1.5 transition-colors hover:bg-secondary/50 hover:text-primary"
                                                 >
                                                     <Minus className="h-3.5 w-3.5" />
                                                 </button>
-                                                <span className="w-10 text-center text-sm font-medium">{item.quantity}</span>
+                                                <span className="w-8 sm:w-10 text-center text-xs sm:text-sm font-medium">{item.quantity}</span>
                                                 <button
                                                     onClick={() => updateQuantity(item.productId, item.variantId, item.quantity + 1)}
-                                                    className="px-3 py-1.5 transition-colors hover:bg-secondary/50 hover:text-primary"
+                                                    className="p-1.5 sm:px-3 sm:py-1.5 transition-colors hover:bg-secondary/50 hover:text-primary"
                                                 >
                                                     <Plus className="h-3.5 w-3.5" />
                                                 </button>
                                             </div>
-                                            <div className="font-display text-lg font-bold text-primary">
+                                            <div className="font-display text-sm sm:text-lg font-bold text-primary shrink-0">
                                                 {formatPrice(item.price * item.quantity)}
                                             </div>
                                         </div>

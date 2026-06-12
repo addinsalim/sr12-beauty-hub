@@ -114,11 +114,11 @@ const ProductDetail = () => {
       </div>
 
       {/* ── Layout: Full-bleed image on mobile, 2-col on desktop ── */}
-      <div className="md:container md:mx-auto md:px-4 md:py-14">
-        <div className="grid md:gap-12 md:grid-cols-2">
+      <div className="md:container md:mx-auto md:px-4 md:py-14 overflow-hidden">
+        <div className="grid md:gap-12 md:grid-cols-2 min-w-0">
 
           {/* ── Image Slider Section ── */}
-          <div className="space-y-3 md:space-y-4">
+          <div className="space-y-3 md:space-y-4 min-w-0">
             {/* Main image — full width on mobile, rounded on desktop */}
             <div
               className="relative group overflow-hidden bg-gradient-gold shadow-glow md:rounded-3xl opacity-0 animate-blur-in w-full aspect-square select-none"
@@ -199,7 +199,7 @@ const ProductDetail = () => {
           </div>
 
           {/* Info */}
-          <div className="flex flex-col opacity-0 animate-slide-up px-4 md:px-0" style={{ animationDelay: '0.15s' }}>
+          <div className="flex flex-col opacity-0 animate-slide-up px-4 md:px-0 min-w-0" style={{ animationDelay: '0.15s' }}>
             {/* Certifications */}
             <div className="mb-4 flex items-center gap-3">
               {product.bpom && (
