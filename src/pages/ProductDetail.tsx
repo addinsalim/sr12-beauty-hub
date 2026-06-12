@@ -113,8 +113,7 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      {/* Tambahkan padding bottom lebih besar di mobile agar tidak tertutup bottom bar */}
-      <div className="container mx-auto px-4 py-6 pb-28 sm:py-10 md:py-14 sm:pb-14">
+      <div className="container mx-auto px-4 py-6 sm:py-10 md:py-14">
         <div className="grid gap-8 md:gap-12 md:grid-cols-2">
           {/* ── Image Slider Section ── */}
           <div className="space-y-4">
@@ -295,17 +294,8 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Actions - Floating Bottom Bar on Mobile */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-2 border-t border-border/40 bg-background/95 p-3 backdrop-blur-lg shadow-[0_-4px_10px_rgba(0,0,0,0.05)] sm:relative sm:bottom-auto sm:left-auto sm:right-auto sm:z-auto sm:mb-8 sm:flex-wrap sm:gap-3 sm:border-none sm:bg-transparent sm:p-0 sm:backdrop-blur-none sm:shadow-none animate-slide-up sm:animate-none">
-              
-              <button
-                onClick={() => toggleWishlist(product.id, product.name)}
-                className={`flex h-[46px] w-[46px] sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-full glass border border-border/30 transition-all duration-300 hover:shadow-glow hover:scale-110 shrink-0 ${isInWishlist(product.id) ? 'text-rose-gold' : 'text-muted-foreground hover:text-rose-gold'}`}
-                aria-label="Wishlist"
-              >
-                <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
-              </button>
-
+            {/* Actions */}
+            <div className="mb-8 flex flex-col sm:flex-row flex-wrap gap-3">
               <button
                 onClick={() => {
                   if (!user) {
@@ -334,9 +324,9 @@ const ProductDetail = () => {
                   }, quantity);
                   toast({ title: 'Ditambahkan ke keranjang', description: `${product.name} x${quantity}` });
                 }}
-                className="flex flex-1 sm:w-full sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-full border-2 border-primary bg-transparent py-3 sm:py-3.5 text-[13px] sm:text-sm font-semibold text-primary shadow-glow transition-all duration-300 hover:bg-primary/5 hover:scale-[1.02] leading-tight"
+                className="flex w-full sm:flex-1 items-center justify-center gap-2 rounded-full border-2 border-primary bg-transparent py-3.5 text-[13px] sm:text-sm font-semibold text-primary shadow-glow transition-all duration-300 hover:bg-primary/5 hover:scale-[1.02]"
               >
-                <ShoppingBag className="h-4 w-4 shrink-0" /> Tambah <span className="hidden sm:inline">ke Keranjang</span>
+                <ShoppingBag className="h-4 w-4 shrink-0" /> Tambah ke Keranjang
               </button>
               
               <button
@@ -368,12 +358,19 @@ const ProductDetail = () => {
                   };
                   navigate('/checkout', { state: { buyNowItem } });
                 }}
-                className="shimmer flex flex-1 sm:w-full sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-full bg-primary py-3 sm:py-3.5 text-[13px] sm:text-sm font-semibold text-primary-foreground shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:scale-[1.02] leading-tight"
+                className="shimmer flex w-full sm:flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-[13px] sm:text-sm font-semibold text-primary-foreground shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:scale-[1.02]"
               >
-                Beli <span className="hidden sm:inline">Sekarang</span>
+                Beli Sekarang
               </button>
               
-              <div className="hidden sm:flex w-full sm:w-auto justify-center sm:justify-start gap-3 mt-2 sm:mt-0">
+              <div className="flex w-full sm:w-auto justify-center sm:justify-start gap-3 mt-2 sm:mt-0">
+                <button
+                  onClick={() => toggleWishlist(product.id, product.name)}
+                  className={`flex h-12 w-12 items-center justify-center rounded-full glass border border-border/30 transition-all duration-300 hover:shadow-glow hover:scale-110 shrink-0 ${isInWishlist(product.id) ? 'text-rose-gold' : 'text-muted-foreground hover:text-rose-gold'}`}
+                  aria-label="Wishlist"
+                >
+                  <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
+                </button>
                 <button className="flex h-12 w-12 items-center justify-center rounded-full glass border border-border/30 text-muted-foreground transition-all duration-300 hover:text-foreground hover:shadow-glow hover:scale-110 shrink-0">
                   <Share2 className="h-5 w-5" />
                 </button>
