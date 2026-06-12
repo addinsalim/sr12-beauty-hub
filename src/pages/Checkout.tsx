@@ -43,7 +43,7 @@ const Checkout = () => {
     full_address: '', city: '', province: '', postal_code: '', district: '',
   });
 
-  const paymentMethod = 'midtrans';
+  const [paymentMethod, setPaymentMethod] = useState<'midtrans' | 'cod'>('midtrans');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -404,11 +404,26 @@ const Checkout = () => {
               )}
             </section>
 
-            {/* 4. Payment Info (Midtrans only) */}
+            {/* 4. Payment Method */}
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
-              <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/30 px-3 py-2 text-xs text-green-700 dark:text-green-400">
-                <ShieldCheck className="h-4 w-4 shrink-0" />
-                <span>Pembayaran aman & terenkripsi oleh <strong>Midtrans</strong> — mendukung Transfer Bank, Kartu Kredit, GoPay, OVO, DANA, QRIS & lainnya</span>
+              <h2 className="flex items-center gap-2 font-display text-base font-bold text-card-foreground mb-3">
+                <ShieldCheck className="h-5 w-5 text-primary" /> Metode Pembayaran
+              </h2>
+              <div className="space-y-3">
+                <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${paymentMethod === 'midtrans' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}>
+                  <input type="radio" name="payment" className="mt-1 accent-primary" checked={paymentMethod === 'midtrans'} onChange={() => setPaymentMethod('midtrans')} />
+                  <div>
+                    <p className="font-medium text-card-foreground text-sm">Pembayaran Online (Midtrans)</p>
+                    <p className="text-xs text-muted-foreground mt-1">Transfer Bank, Kartu Kredit, E-Wallet (GoPay, OVO, DANA), dan QRIS.</p>
+                  </div>
+                </label>
+                <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}>
+                  <input type="radio" name="payment" className="mt-1 accent-primary" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
+                  <div>
+                    <p className="font-medium text-card-foreground text-sm">Bayar di Tempat (COD)</p>
+                    <p className="text-xs text-muted-foreground mt-1">Bayar dengan uang tunai langsung ke kurir saat pesanan tiba.</p>
+                  </div>
+                </label>
               </div>
             </section>
 
