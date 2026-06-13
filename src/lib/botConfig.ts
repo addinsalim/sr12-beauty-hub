@@ -15,6 +15,8 @@ export interface BotConfig {
   fallbackReply: string;
   fallbackQuickReplies: string[];
   categories: BotCategory[];
+  useGemini?: boolean;
+  geminiApiKey?: string;
 }
 
 const BOT_CONFIG_KEY = 'sr12_bot_config';
@@ -26,6 +28,8 @@ export const DEFAULT_BOT_CONFIG: BotConfig = {
   fallbackReply:
     'Maaf, saya belum bisa menjawab pertanyaan itu. 😅\n\nCoba ketik dengan kata kunci seperti:\n• **"cara order"** – panduan belanja\n• **"info produk"** – rangkaian skincare kami\n• **"status pesanan"** – cek pesananmu\n• **"promo"** – voucher & diskon\n• **"hubungi CS"** – kontak langsung\n\nAtau hubungi admin kami langsung! 💬',
   fallbackQuickReplies: ['Cara Order 🛍️', 'Info Produk 💄', 'Hubungi CS 📞', 'Lihat Promo 🎁'],
+  useGemini: true,
+  geminiApiKey: '',
   categories: [
     // ── 1. SAPAAN ──────────────────────────────────────────────────────────
     {
@@ -320,6 +324,8 @@ export function loadBotConfig(): BotConfig {
         categories: Array.isArray(parsed.categories) && parsed.categories.length
           ? parsed.categories
           : DEFAULT_BOT_CONFIG.categories,
+        useGemini: parsed.useGemini ?? DEFAULT_BOT_CONFIG.useGemini,
+        geminiApiKey: parsed.geminiApiKey ?? DEFAULT_BOT_CONFIG.geminiApiKey,
       };
     }
   } catch { /* ignore */ }

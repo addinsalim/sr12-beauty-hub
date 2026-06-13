@@ -191,9 +191,89 @@ function BotPreview({ config }: { config: BotConfig }) {
     setTyping(true);
     scrollBottom();
 
-    await new Promise((r) => setTimeout(r, Math.min(config.delayMs, 800)));
+    const apiKey = config.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
+    let reply = '';
 
-    const { reply } = getBotReplyFromConfig(text, config);
+    if (config.useGemini && apiKey) {
+      try {
+        const contents: any[] = [];
+        let lastRole: 'user' | 'model' | null = null;
+        
+        // Build history from current messages
+        const recentMsgs = msgs.slice(-10);
+        for (const m of recentMsgs) {
+          const role = m.role === 'user' ? 'user' : 'model';
+          if (role === lastRole) {
+            contents[contents.length - 1].parts[0].text += '\n' + m.text;
+          } else {
+            contents.push({
+              role,
+              parts: [{ text: m.text }]
+            });
+            lastRole = role;
+          }
+        }
+
+        // Add current user query
+        if (contents.length === 0 || contents[contents.length - 1].role !== 'user') {
+          contents.push({
+            role: 'user',
+            parts: [{ text }]
+          });
+        }
+
+        const systemInstruction = {
+          parts: [{
+            text: `You are ${config.botName || 'Bella'}, a friendly, helpful, and professional virtual AI assistant for SR12 Purwakarta / Beauty Hub (an Indonesian brand of premium natural skincare, cosmetics, herbal products, and fragrances).
+Respond in Indonesian (Bahasa Indonesia) with a polite, warm, and helpful tone.
+Use emojis, clear spacing, and bullet points to make your replies readable.
+Keep your answers concise and professional (maximum 3-4 sentences).
+You can help users with:
+- Ordering guidelines (checkout, adding to cart, vouchers).
+- Skincare tips and recommendations.
+- Payment methods.
+- Store locations and contact info.
+If the user asks questions outside the scope of SR12 Beauty Hub, politely state that you can only help with SR12 Beauty Hub queries, and advise them to wait for a human admin to respond. Encourage the user to browse the "Produk" page for exact prices and real-time stock.`
+          }]
+        };
+
+        const delay = Math.max(500, config.delayMs || 1000);
+        const startTime = Date.now();
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contents,
+            systemInstruction
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Gemini status ${response.status}`);
+        }
+
+        const resData = await response.json();
+        reply = resData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+        const elapsed = Date.now() - startTime;
+        if (elapsed < delay) {
+          await new Promise((r) => setTimeout(r, delay - elapsed));
+        }
+      } catch (err) {
+        console.error('[BotPreview] Gemini error, fallback to local config:', err);
+        const localRes = getBotReplyFromConfig(text, config);
+        reply = localRes.reply;
+      }
+    } else {
+      await new Promise((r) => setTimeout(r, Math.min(config.delayMs, 800)));
+      const localRes = getBotReplyFromConfig(text, config);
+      reply = localRes.reply;
+    }
+
     setMsgs((p) => [...p, { role: 'bot', text: reply }]);
     setTyping(false);
     scrollBottom();
@@ -396,35 +476,76 @@ const AdminBotSettings = () => {
       {/* ── Tab: Pengaturan Umum ── */}
       {activeTab === 'settings' && (
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Identitas Bot */}
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
-              <Bot className="h-4 w-4 text-primary" /> Identitas Bot
-            </h2>
+          <div className="space-y-4">
+            {/* Identitas Bot */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                <Bot className="h-4 w-4 text-primary" /> Identitas Bot
+              </h2>
 
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nama Bot</label>
-              <input
-                value={config.botName}
-                onChange={(e) => update('botName', e.target.value)}
-                placeholder="Bella"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-              <p className="text-[11px] text-muted-foreground mt-1">Gunakan <code className="bg-secondary px-1 rounded text-[10px]">{'{botName}'}</code> di teks balasan untuk menyebut nama bot.</p>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nama Bot</label>
+                <input
+                  value={config.botName}
+                  onChange={(e) => update('botName', e.target.value)}
+                  placeholder="Bella"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Gunakan <code className="bg-secondary px-1 rounded text-[10px]">{'{botName}'}</code> di teks balasan untuk menyebut nama bot.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Delay Balasan: <strong>{config.delayMs}ms</strong>
+                </label>
+                <input
+                  type="range" min={500} max={5000} step={100}
+                  value={config.delayMs}
+                  onChange={(e) => update('delayMs', Number(e.target.value))}
+                  className="w-full accent-primary"
+                />
+                <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
+                  <span>0.5 detik</span><span>5 detik</span>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Delay Balasan: <strong>{config.delayMs}ms</strong>
-              </label>
-              <input
-                type="range" min={500} max={5000} step={100}
-                value={config.delayMs}
-                onChange={(e) => update('delayMs', Number(e.target.value))}
-                className="w-full accent-primary"
-              />
-              <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
-                <span>0.5 detik</span><span>5 detik</span>
+            {/* Integrasi AI Gemini */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-violet-500" /> Integrasi AI Gemini
+              </h2>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/35 border border-border/40">
+                <div>
+                  <p className="text-xs font-medium text-foreground">Aktifkan AI Gemini</p>
+                  <p className="text-[10px] text-muted-foreground">Respons bot cerdas & dinamis berbasis AI</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => update('useGemini', !config.useGemini)}
+                  className={`rounded-full p-1 transition ${
+                    config.useGemini ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  {config.useGemini ? <ToggleRight className="h-7 w-7" /> : <ToggleLeft className="h-7 w-7" />}
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Gemini API Key <span className="text-[10px] text-muted-foreground">(Opsional - default menggunakan API Key sistem)</span>
+                </label>
+                <input
+                  type="password"
+                  value={config.geminiApiKey || ''}
+                  onChange={(e) => update('geminiApiKey', e.target.value)}
+                  placeholder="Masukkan API Key (AIzaSy...)"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Jika dikosongkan, aplikasi akan menggunakan API Key global yang dikonfigurasi di server.
+                </p>
               </div>
             </div>
           </div>

@@ -181,8 +181,8 @@ const ChatWidget = () => {
       // Selalu baca config fresh dari localStorage (hindari stale closure)
       const cfg = loadBotConfig();
 
-      let reply: string;
-      let qr: string[];
+      let reply: string = '';
+      let qr: string[] = [];
 
       if (!cfg.enabled) {
         // Bot dinonaktifkan — kirim balasan offline standar
@@ -191,9 +191,95 @@ const ChatWidget = () => {
           ? cfg.fallbackQuickReplies
           : ['Cara Order 🛍️', 'Info Produk 💄', 'Hubungi CS 📞'];
       } else {
-        const result = getBotReplyFromConfig(userText, cfg);
-        reply = result.reply;
-        qr = result.quickReplies;
+        const apiKey = cfg.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
+        
+        if (cfg.useGemini && apiKey) {
+          try {
+            // Prepare alternating chat history for Gemini
+            const contents: any[] = [];
+            let lastRole: 'user' | 'model' | null = null;
+            
+            // Limit history to last 10 messages for performance and context limits
+            const recentMessages = messages.slice(-10);
+            for (const m of recentMessages) {
+              const role = m.sender_role === 'customer' ? 'user' : 'model';
+              const text = m.message || '';
+              if (!text) continue;
+              
+              if (role === lastRole) {
+                const lastMsg = contents[contents.length - 1];
+                lastMsg.parts[0].text += '\n' + text;
+              } else {
+                contents.push({
+                  role,
+                  parts: [{ text }]
+                });
+                lastRole = role;
+              }
+            }
+            
+            // Ensure the current user message is at the end
+            if (contents.length === 0 || contents[contents.length - 1].role !== 'user') {
+              contents.push({
+                role: 'user',
+                parts: [{ text: userText }]
+              });
+            }
+
+            const systemInstruction = {
+              parts: [{
+                text: `You are ${cfg.botName || 'Bella'}, a friendly, helpful, and professional virtual AI assistant for SR12 Purwakarta / Beauty Hub (an Indonesian brand of premium natural skincare, cosmetics, herbal products, and fragrances).
+Respond in Indonesian (Bahasa Indonesia) with a polite, warm, and helpful tone.
+Use emojis, clear spacing, and bullet points to make your replies readable.
+Keep your answers concise and professional (maximum 3-4 sentences).
+You can help users with:
+- Ordering guidelines (checkout, adding to cart, vouchers).
+- Skincare tips and recommendations (moisturizer, toner, wash, serum, sunscreen, etc.).
+- Payment methods (Virtual Account, E-Wallet, QRIS via Midtrans).
+- Store locations and contact info.
+- Shipping info (JNE, J&T, SiCepat, Pos, free shipping for orders over Rp200.000).
+
+If the user asks questions outside the scope of SR12 Beauty Hub, politely state that you can only help with SR12 Beauty Hub queries, and advise them to wait for a human admin to respond. Do not make up fake vouchers, promotions, or pricing. Encourage the user to browse the "Produk" page for exact prices and real-time stock.`
+              }]
+            };
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                contents,
+                systemInstruction
+              })
+            });
+
+            if (!response.ok) {
+              const errData = await response.json().catch(() => ({}));
+              throw new Error(errData?.error?.message || `Gemini API returned status ${response.status}`);
+            }
+
+            const resData = await response.json();
+            const geminiText = resData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+            if (geminiText) {
+              reply = geminiText;
+              qr = cfg.fallbackQuickReplies || ['Cara Order 🛍️', 'Info Produk 💄', 'Hubungi CS 📞'];
+            } else {
+              throw new Error('Empty response from Gemini');
+            }
+          } catch (apiErr) {
+            console.error('[ChatWidget] Gemini API error, falling back to local botConfig:', apiErr);
+            const result = getBotReplyFromConfig(userText, cfg);
+            reply = result.reply;
+            qr = result.quickReplies;
+          }
+        } else {
+          // Local config category match
+          const result = getBotReplyFromConfig(userText, cfg);
+          reply = result.reply;
+          qr = result.quickReplies;
+        }
       }
 
       setIsTyping(true);
