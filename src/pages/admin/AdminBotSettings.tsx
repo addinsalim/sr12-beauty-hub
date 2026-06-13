@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Bot, Save, RotateCcw, Plus, Trash2, ChevronDown, ChevronUp,
   X, ToggleLeft, ToggleRight, Send, Loader2, Sparkles, Settings2,
@@ -10,6 +10,7 @@ import {
   loadBotConfig, saveBotConfig, getBotReplyFromConfig,
   DEFAULT_BOT_CONFIG,
 } from '@/lib/botConfig';
+import { fetchProducts } from '@/lib/supabaseHelpers';
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 function generateId() {
@@ -179,7 +180,12 @@ function BotPreview({ config }: { config: BotConfig }) {
   const [input, setInput] = useState('');
   const [msgs, setMsgs] = useState<{ role: 'user' | 'bot'; text: string }[]>([]);
   const [typing, setTyping] = useState(false);
+  const [catalog, setCatalog] = useState<any[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchProducts().then(res => setCatalog(res || [])).catch(() => {});
+  }, []);
 
   const scrollBottom = () => setTimeout(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight), 50);
 
@@ -222,18 +228,32 @@ function BotPreview({ config }: { config: BotConfig }) {
           });
         }
 
+        const productListStr = catalog.length > 0 
+          ? catalog.map(p => {
+              const catName = p.categories?.name || 'Skincare';
+              const variantsStr = p.variants && p.variants.length > 0 
+                ? p.variants.map((v: any) => `${v.name}: Rp${v.price}`).join(', ')
+                : `Rp${p.price || 0}`;
+              return `- ${p.name} (${catName}) - Varian/Harga: ${variantsStr} - Stok: ${p.stock ?? 0} pcs`;
+            }).join('\n')
+          : 'Daftar produk tidak tersedia saat ini.';
+
         const systemInstruction = {
           parts: [{
             text: `You are ${config.botName || 'Bella'}, a friendly, helpful, and professional virtual AI assistant for SR12 Purwakarta / Beauty Hub (an Indonesian brand of premium natural skincare, cosmetics, herbal products, and fragrances).
 Respond in Indonesian (Bahasa Indonesia) with a polite, warm, and helpful tone.
 Use emojis, clear spacing, and bullet points to make your replies readable.
 Keep your answers concise and professional (maximum 3-4 sentences).
-You can help users with:
-- Ordering guidelines (checkout, adding to cart, vouchers).
-- Skincare tips and recommendations.
-- Payment methods.
-- Store locations and contact info.
-If the user asks questions outside the scope of SR12 Beauty Hub, politely state that you can only help with SR12 Beauty Hub queries, and advise them to wait for a human admin to respond. Encourage the user to browse the "Produk" page for exact prices and real-time stock.`
+
+Berikut adalah data katalog produk nyata yang terdaftar di toko kami saat ini:
+${productListStr}
+
+ATURAN PENTING:
+1. Hanya tawarkan/rekomendasikan produk dan varian yang ada di katalog di atas. Gunakan detail nama dan harganya secara presisi.
+2. Jika stok produk tertulis 0 atau habis, infokan bahwa produk tersebut saat ini sedang habis (out of stock).
+3. Jika ditanya mengenai pemesanan, arahkan untuk menambahkannya ke keranjang belanja lalu klik checkout.
+4. Jika ditanya di luar produk/katalog yang tersedia (misal produk merk lain), katakan secara sopan bahwa Anda hanya melayani produk dari SR12 Beauty Hub.
+5. Jangan pernah mengarang produk, harga, diskon, atau promo yang tidak terdaftar di atas.`
           }]
         };
 
