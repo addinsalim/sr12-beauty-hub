@@ -13,25 +13,33 @@ const FeaturedProducts = () => {
   useEffect(() => {
     fetchProducts()
       .then(data => {
-        setProducts(
-          (data || []).slice(0, 4).map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            slug: p.slug,
-            category: p.categories?.slug || 'skincare',
-            price: Number(p.price),
-            discount: p.discount || undefined,
-            stock: p.stock,
-            primaryImage:
-              p.product_images?.find((i: any) => i.is_primary)?.image_url ||
-              p.product_images?.[0]?.image_url,
-            images: (p.product_images || []).map((i: any) => i.image_url),
-            rating: Number(p.rating),
-            reviewCount: p.review_count || 0,
-            bpom: p.bpom,
-            halal: p.halal,
-          }))
-        );
+        const mapped = (data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          category: p.categories?.slug || 'skincare',
+          price: Number(p.price),
+          discount: p.discount || undefined,
+          stock: p.stock,
+          primaryImage:
+            p.product_images?.find((i: any) => i.is_primary)?.image_url ||
+            p.product_images?.[0]?.image_url,
+          images: (p.product_images || []).map((i: any) => i.image_url),
+          rating: Number(p.rating || 0),
+          reviewCount: p.review_count || 0,
+          bpom: p.bpom,
+          halal: p.halal,
+        }));
+
+        // Sort by reviewCount desc (proxy for sales volume), then rating desc
+        const sorted = mapped.sort((a, b) => {
+          if (b.reviewCount !== a.reviewCount) {
+            return b.reviewCount - a.reviewCount;
+          }
+          return b.rating - a.rating;
+        });
+
+        setProducts(sorted.slice(0, 4));
       })
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));

@@ -39,6 +39,16 @@ const Products = () => {
     if (sortBy === 'price-low') result.sort((a, b) => Number(a.price) - Number(b.price));
     if (sortBy === 'price-high') result.sort((a, b) => Number(b.price) - Number(a.price));
     if (sortBy === 'rating') result.sort((a, b) => Number(b.rating) - Number(a.rating));
+    if (sortBy === 'best-seller') {
+      result.sort((a, b) => {
+        const aReviews = a.review_count || 0;
+        const bReviews = b.review_count || 0;
+        if (bReviews !== aReviews) {
+          return bReviews - aReviews;
+        }
+        return Number(b.rating || 0) - Number(a.rating || 0);
+      });
+    }
     return result;
   }, [products, search, sortBy]);
 
@@ -146,6 +156,7 @@ const Products = () => {
             className="w-full sm:w-auto rounded-full glass px-4 py-2.5 sm:py-2 text-sm text-foreground outline-none transition-all focus:shadow-glow focus:ring-1 focus:ring-primary/30"
           >
             <option value="newest">Terbaru</option>
+            <option value="best-seller">Terlaris (Ulasan & Rating)</option>
             <option value="price-low">Harga Terendah</option>
             <option value="price-high">Harga Tertinggi</option>
             <option value="rating">Rating Tertinggi</option>
