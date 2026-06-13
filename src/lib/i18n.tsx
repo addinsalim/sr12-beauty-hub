@@ -18,6 +18,8 @@ const translations = {
       kosmetik: 'Kosmetik',
       skincare: 'Skincare',
       herbal: 'Herbal',
+      help: 'Bantuan',
+      storeLocation: 'Lokasi Toko',
     },
     hero: {
       title: 'Kecantikan Alami,',
@@ -87,6 +89,8 @@ const translations = {
       kosmetik: 'Cosmetics',
       skincare: 'Skincare',
       herbal: 'Herbal',
+      help: 'Help',
+      storeLocation: 'Store Location',
     },
     hero: {
       title: 'Natural Beauty,',

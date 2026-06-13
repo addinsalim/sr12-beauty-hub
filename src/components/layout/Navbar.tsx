@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle, Heart, History, Ticket, Shield, MapPin } from 'lucide-react';
+import { ShoppingBag, Search, User, Menu, X, Globe, Home, Package, Info, LogIn, UserPlus, LayoutDashboard, LogOut, KeyRound, UserCircle, Heart, History, Ticket, Shield, MapPin, ChevronDown } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -10,6 +10,8 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileCatOpen, setIsMobileCatOpen] = useState(false);
+  const [isMobileHelpOpen, setIsMobileHelpOpen] = useState(false);
   const { t, lang, setLang } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
@@ -24,17 +26,6 @@ const Navbar = () => {
     setIsOpen(false);
     setSearchQuery('');
   };
-
-  const navLinks = [
-    { href: '/', label: t.nav.home, icon: Home },
-    { href: '/products', label: t.nav.products, icon: Package },
-    { href: '/products?category=parfum', label: t.nav.parfum },
-    { href: '/products?category=kosmetik', label: t.nav.kosmetik },
-    { href: '/products?category=skincare', label: t.nav.skincare },
-    { href: '/products?category=herbal', label: t.nav.herbal },
-    { href: '/about', label: t.nav.about, icon: Info },
-    { href: '/store-location', label: 'Lokasi Toko', icon: MapPin },
-  ];
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -62,19 +53,114 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-0.5 lg:flex">
-            {navLinks.map(link => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className={`underline-grow rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-300 ${location.pathname === link.href
-                    ? 'text-primary'
+          <nav className="hidden items-center gap-2 lg:flex">
+            {/* Home Link */}
+            <Link
+              to="/"
+              className={`underline-grow rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                location.pathname === '/' && !location.search
+                  ? 'text-primary font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {t.nav.home}
+            </Link>
+
+            {/* Kategori Produk Dropdown */}
+            <div className="relative group py-2">
+              <button
+                className={`underline-grow flex items-center gap-1 px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                  location.pathname === '/products'
+                    ? 'text-primary font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                }`}
               >
-                {link.label}
-              </Link>
-            ))}
+                <span>{t.nav.categories}</span>
+                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
+              </button>
+              {/* Invisible bridge to prevent hover loss */}
+              <div className="absolute top-full left-0 w-full h-2" />
+              <div className="absolute left-0 top-[calc(100%+8px)] hidden w-48 rounded-xl border border-border/40 bg-background/90 backdrop-blur-md p-1.5 shadow-elegant group-hover:block animate-scale-in z-50">
+                <Link
+                  to="/products?category=parfum"
+                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/products' && location.search.includes('category=parfum')
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                  }`}
+                >
+                  {t.nav.parfum}
+                </Link>
+                <Link
+                  to="/products?category=kosmetik"
+                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/products' && location.search.includes('category=kosmetik')
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                  }`}
+                >
+                  {t.nav.kosmetik}
+                </Link>
+                <Link
+                  to="/products?category=skincare"
+                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/products' && location.search.includes('category=skincare')
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                  }`}
+                >
+                  {t.nav.skincare}
+                </Link>
+                <Link
+                  to="/products?category=herbal"
+                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/products' && location.search.includes('category=herbal')
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                  }`}
+                >
+                  {t.nav.herbal}
+                </Link>
+              </div>
+            </div>
+
+            {/* Bantuan Dropdown */}
+            <div className="relative group py-2">
+              <button
+                className={`underline-grow flex items-center gap-1 px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                  location.pathname === '/store-location' || location.pathname === '/about'
+                    ? 'text-primary font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <span>{t.nav.help}</span>
+                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
+              </button>
+              {/* Invisible bridge to prevent hover loss */}
+              <div className="absolute top-full left-0 w-full h-2" />
+              <div className="absolute left-0 top-[calc(100%+8px)] hidden w-48 rounded-xl border border-border/40 bg-background/90 backdrop-blur-md p-1.5 shadow-elegant group-hover:block animate-scale-in z-50">
+                <Link
+                  to="/store-location"
+                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/store-location'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                  }`}
+                >
+                  {t.nav.storeLocation}
+                </Link>
+                <Link
+                  to="/about"
+                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/about'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                  }`}
+                >
+                  {t.nav.about}
+                </Link>
+              </div>
+            </div>
           </nav>
 
           {/* Actions */}
@@ -220,24 +306,132 @@ const Navbar = () => {
               </div>
             </div>
 
-            <nav className="flex flex-col px-3 pb-3">
-              {navLinks.map((link, i) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium transition-all active:bg-secondary ${
-                    location.pathname === link.href
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground'
+            <nav className="flex flex-col gap-1 px-3 pb-3">
+              {/* Home */}
+              <Link
+                to="/"
+                onClick={() => setIsOpen(false)}
+                className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium transition-all active:bg-secondary ${
+                  location.pathname === '/' && !location.search
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'text-muted-foreground hover:bg-secondary/50'
+                }`}
+              >
+                <Home className="h-5 w-5 shrink-0" />
+                {t.nav.home}
+              </Link>
+
+              {/* Kategori Produk Accordion */}
+              <div className="flex flex-col">
+                <button
+                  onClick={() => setIsMobileCatOpen(!isMobileCatOpen)}
+                  className={`flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium transition-all active:bg-secondary ${
+                    isMobileCatOpen || (location.pathname === '/products' && location.search.includes('category='))
+                      ? 'bg-secondary/35 text-foreground'
+                      : 'text-muted-foreground hover:bg-secondary/50'
                   }`}
-                  style={{ animationDelay: `${i * 0.05}s` }}
                 >
-                  {link.icon && <link.icon className="h-5 w-5" />}
-                  {!link.icon && <span className="h-5 w-5" />}
-                  {link.label}
-                </Link>
-              ))}
+                  <div className="flex items-center gap-3">
+                    <Package className="h-5 w-5 shrink-0" />
+                    <span>{t.nav.categories}</span>
+                  </div>
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isMobileCatOpen ? 'rotate-180 text-primary' : 'text-muted-foreground'}`} />
+                </button>
+                {isMobileCatOpen && (
+                  <div className="pl-12 pr-4 py-1 flex flex-col gap-1 border-l border-border/30 ml-6 animate-slide-down">
+                    <Link
+                      to="/products?category=parfum"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-lg py-2.5 px-3 text-[14px] font-medium transition-all active:bg-secondary ${
+                        location.pathname === '/products' && location.search.includes('category=parfum')
+                          ? 'text-primary font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t.nav.parfum}
+                    </Link>
+                    <Link
+                      to="/products?category=kosmetik"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-lg py-2.5 px-3 text-[14px] font-medium transition-all active:bg-secondary ${
+                        location.pathname === '/products' && location.search.includes('category=kosmetik')
+                          ? 'text-primary font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t.nav.kosmetik}
+                    </Link>
+                    <Link
+                      to="/products?category=skincare"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-lg py-2.5 px-3 text-[14px] font-medium transition-all active:bg-secondary ${
+                        location.pathname === '/products' && location.search.includes('category=skincare')
+                          ? 'text-primary font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t.nav.skincare}
+                    </Link>
+                    <Link
+                      to="/products?category=herbal"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-lg py-2.5 px-3 text-[14px] font-medium transition-all active:bg-secondary ${
+                        location.pathname === '/products' && location.search.includes('category=herbal')
+                          ? 'text-primary font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t.nav.herbal}
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Bantuan Accordion */}
+              <div className="flex flex-col">
+                <button
+                  onClick={() => setIsMobileHelpOpen(!isMobileHelpOpen)}
+                  className={`flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium transition-all active:bg-secondary ${
+                    isMobileHelpOpen || location.pathname === '/store-location' || location.pathname === '/about'
+                      ? 'bg-secondary/35 text-foreground'
+                      : 'text-muted-foreground hover:bg-secondary/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Info className="h-5 w-5 shrink-0" />
+                    <span>{t.nav.help}</span>
+                  </div>
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isMobileHelpOpen ? 'rotate-180 text-primary' : 'text-muted-foreground'}`} />
+                </button>
+                {isMobileHelpOpen && (
+                  <div className="pl-12 pr-4 py-1 flex flex-col gap-1 border-l border-border/30 ml-6 animate-slide-down">
+                    <Link
+                      to="/store-location"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-lg py-2.5 px-3 text-[14px] font-medium transition-all active:bg-secondary flex items-center gap-2 ${
+                        location.pathname === '/store-location'
+                          ? 'text-primary font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <MapPin className="h-4 w-4 shrink-0" />
+                      {t.nav.storeLocation}
+                    </Link>
+                    <Link
+                      to="/about"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-lg py-2.5 px-3 text-[14px] font-medium transition-all active:bg-secondary flex items-center gap-2 ${
+                        location.pathname === '/about'
+                          ? 'text-primary font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Info className="h-4 w-4 shrink-0" />
+                      {t.nav.about}
+                    </Link>
+                  </div>
+                )}
+              </div>
 
               <div className="my-2 mx-4 border-t border-border/30" />
 
