@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
@@ -6,19 +7,83 @@ import { formatPrice } from '@/lib/supabaseHelpers';
 import { Button } from '@/components/ui/button';
 
 const Cart = () => {
-    const { items, updateQuantity, removeItem, clearCart, totalItems, totalPrice } = useCart();
+    const { items, updateQuantity, removeItem, clearCart } = useCart();
     const { t } = useI18n();
     const navigate = useNavigate();
 
-    // Determine shipping price rule (free above Rp200.000, consistent with Cart)
+    // Track selected items using a state Set of "productId::variantId" keys
+    const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+
+    // Automatically select new items added to the cart
+    useEffect(() => {
+        if (items.length > 0) {
+            setSelectedKeys(prev => {
+                const next = new Set(prev);
+                let changed = false;
+                items.forEach(item => {
+                    const key = `${item.productId}::${item.variantId || ''}`;
+                    if (!next.has(key)) {
+                        next.add(key);
+                        changed = true;
+                    }
+                });
+                // Clean up keys that are no longer in the cart items
+                const currentKeys = new Set(items.map(item => `${item.productId}::${item.variantId || ''}`));
+                next.forEach(key => {
+                    if (!currentKeys.has(key)) {
+                        next.delete(key);
+                        changed = true;
+                    }
+                });
+                return changed ? next : prev;
+            });
+        } else {
+            setSelectedKeys(new Set());
+        }
+    }, [items]);
+
+    const toggleItem = (key: string) => {
+        setSelectedKeys(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    };
+
+    const allSelected = items.length > 0 && items.every(item => selectedKeys.has(`${item.productId}::${item.variantId || ''}`));
+
+    const toggleSelectAll = () => {
+        if (allSelected) {
+            setSelectedKeys(new Set());
+        } else {
+            const allKeys = new Set(items.map(item => `${item.productId}::${item.variantId || ''}`));
+            setSelectedKeys(allKeys);
+        }
+    };
+
+    // Filter selected items for calculation and checkout
+    const selectedItems = items.filter(item => selectedKeys.has(`${item.productId}::${item.variantId || ''}`));
+    const selectedTotalItems = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+    const selectedTotalPrice = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    // Determine shipping price rule (free above Rp200.000)
     const SHIPPING_THRESHOLD = 200000;
     const SHIPPING_COST = 20000;
-    const shipping = totalPrice >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
-    const finalTotal = totalPrice + shipping;
+    const shipping = selectedItems.length > 0 && selectedTotalPrice >= SHIPPING_THRESHOLD ? 0 : (selectedItems.length > 0 ? SHIPPING_COST : 0);
+    const finalTotal = selectedTotalPrice + shipping;
+
+    const handleCheckout = () => {
+        if (selectedItems.length === 0) return;
+        navigate('/checkout', { state: { checkoutItems: selectedItems } });
+    };
 
     if (items.length === 0) {
         return (
-            <div className="container flex min-h-[60vh] flex-col items-center justify-center px-4 py-20 text-center">
+            <div className="container flex min-h-[60vh] flex-col items-center justify-center px-4 py-20 text-center mx-auto">
                 <div className="mb-6 rounded-full glass p-10 opacity-0 animate-scale-in">
                     <ShoppingBag className="h-16 w-16 text-muted-foreground" />
                 </div>
@@ -38,11 +103,27 @@ const Cart = () => {
             <div className="container mx-auto px-4">
                 <div className="mb-6 sm:mb-10 flex flex-row items-center justify-between gap-4">
                     <h1 className="font-display text-2xl sm:text-4xl font-bold text-foreground accent-line">
-                        {t.nav.cart || 'Keranjang'} ({totalItems})
+                        {t.nav.cart || 'Keranjang'} ({items.length})
                     </h1>
                     <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0">
-                        <Trash2 className="mr-2 h-4 w-4" /> Hapus
+                        <Trash2 className="mr-2 h-4 w-4" /> Kosongkan
                     </Button>
+                </div>
+
+                {/* Pilih Semua Bar */}
+                <div className="mb-6 flex flex-row items-center justify-between rounded-xl glass p-4 shadow-card">
+                    <label className="flex items-center gap-3 cursor-pointer select-none font-medium text-sm text-foreground">
+                        <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={toggleSelectAll}
+                            className="h-5 w-5 rounded-md border-border text-primary focus:ring-primary/30 accent-primary cursor-pointer animate-scale-in"
+                        />
+                        Pilih Semua ({items.length} Produk)
+                    </label>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                        Pilih produk yang ingin Anda checkout
+                    </span>
                 </div>
 
                 <div className="grid gap-6 sm:gap-10 lg:grid-cols-3">
@@ -50,12 +131,21 @@ const Cart = () => {
                     <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                         {items.map((item, i) => {
                             const key = `${item.productId}::${item.variantId || ''}`;
+                            const isChecked = selectedKeys.has(key);
                             return (
                                 <div
                                     key={key}
-                                    className="flex flex-row items-center gap-3 sm:gap-6 rounded-2xl sm:rounded-3xl glass p-3 sm:p-6 shadow-card transition-all duration-300 hover:shadow-glow opacity-0 animate-slide-up"
+                                    className={`flex flex-row items-center gap-3 sm:gap-6 rounded-2xl sm:rounded-3xl glass p-3 sm:p-6 shadow-card transition-all duration-300 hover:shadow-glow opacity-0 animate-slide-up ${isChecked ? 'border-primary/20 bg-primary/[0.02]' : ''}`}
                                     style={{ animationDelay: `${i * 0.1}s` }}
                                 >
+                                    {/* Selection Checkbox */}
+                                    <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => toggleItem(key)}
+                                        className="h-5 w-5 rounded-md border-border text-primary focus:ring-primary/30 accent-primary cursor-pointer shrink-0"
+                                    />
+
                                     <Link to={`/products/${item.slug}`} className="h-20 w-20 sm:h-28 sm:w-28 shrink-0 overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-gold">
                                         <img
                                             src={item.image}
@@ -119,15 +209,17 @@ const Cart = () => {
 
                             <div className="space-y-4 border-b border-border/30 pb-6 text-sm">
                                 <div className="flex justify-between text-muted-foreground">
-                                    <span>Subtotal ({totalItems} barang)</span>
-                                    <span>{formatPrice(totalPrice)}</span>
+                                    <span>Subtotal ({selectedTotalItems} barang terpilih)</span>
+                                    <span>{formatPrice(selectedTotalPrice)}</span>
                                 </div>
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>Biaya Pengiriman <br/><span className="text-[10px]">*Estimasi</span></span>
-                                    <span className="text-right">{shipping === 0 ? 'Gratis' : formatPrice(shipping)}</span>
+                                    <span className="text-right">
+                                        {selectedItems.length === 0 ? '-' : (shipping === 0 ? 'Gratis' : formatPrice(shipping))}
+                                    </span>
                                 </div>
-                                {shipping > 0 && totalPrice < SHIPPING_THRESHOLD && (
-                                    <p className="text-[10px] text-accent font-medium mt-1">✨ Tambah {formatPrice(SHIPPING_THRESHOLD - totalPrice)} lagi untuk Free Ongkir!</p>
+                                {shipping > 0 && selectedTotalPrice < SHIPPING_THRESHOLD && (
+                                    <p className="text-[10px] text-accent font-medium mt-1">✨ Tambah {formatPrice(SHIPPING_THRESHOLD - selectedTotalPrice)} lagi untuk Free Ongkir!</p>
                                 )}
                             </div>
 
@@ -136,8 +228,14 @@ const Cart = () => {
                                 <span className="text-gradient-gold">{formatPrice(finalTotal)}</span>
                             </div>
 
-                            <Button variant="modern" onClick={() => navigate('/checkout')} className="w-full py-7" size="lg">
-                                Proses Checkout ({totalItems}) <ArrowRight className="ml-2 h-5 w-5" />
+                            <Button 
+                                variant="modern" 
+                                onClick={handleCheckout} 
+                                className="w-full py-7" 
+                                size="lg"
+                                disabled={selectedTotalItems === 0}
+                            >
+                                Proses Checkout ({selectedTotalItems}) <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
 
                             <p className="mt-6 text-center text-[11px] text-muted-foreground">

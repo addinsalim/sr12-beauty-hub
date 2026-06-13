@@ -27,13 +27,14 @@ const SHIPPING_COST = 20000;
 
 const Checkout = () => {
   const { user, loading: authLoading } = useAuth();
-  const { items: cartItems, clearCart } = useCart();
+  const { items: cartItems, clearCart, removeItems } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
   const buyNowItem = location.state?.buyNowItem as CartItem | undefined;
-  const checkoutItems = buyNowItem ? [buyNowItem] : cartItems;
+  const selectedCartItems = location.state?.checkoutItems as CartItem[] | undefined;
+  const checkoutItems = buyNowItem ? [buyNowItem] : (selectedCartItems ? selectedCartItems : cartItems);
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
@@ -177,12 +178,18 @@ const Checkout = () => {
 
       window.snap.pay(snap_token, {
         onSuccess: () => {
-          if (!buyNowItem) clearCart();
+          if (!buyNowItem) {
+            if (selectedCartItems) removeItems(selectedCartItems);
+            else clearCart();
+          }
           toast({ title: '✅ Pembayaran berhasil!', description: 'Pesanan Anda sedang diproses.' });
           setTimeout(() => navigate('/my-orders', { replace: true }), 1500);
         },
         onPending: () => {
-          if (!buyNowItem) clearCart();
+          if (!buyNowItem) {
+            if (selectedCartItems) removeItems(selectedCartItems);
+            else clearCart();
+          }
           toast({ title: '⏳ Menunggu pembayaran', description: 'Selesaikan pembayaran di halaman pesanan.' });
           navigate(`/orders/${orderId}`, { replace: true });
         },
@@ -191,7 +198,10 @@ const Checkout = () => {
           navigate(`/orders/${orderId}`, { replace: true });
         },
         onClose: () => {
-          if (!buyNowItem) clearCart();
+          if (!buyNowItem) {
+            if (selectedCartItems) removeItems(selectedCartItems);
+            else clearCart();
+          }
           toast({ title: 'Pesanan tersimpan', description: 'Selesaikan pembayaran di halaman pesanan Anda.' });
           navigate(`/orders/${orderId}`, { replace: true });
         },
@@ -278,7 +288,10 @@ const Checkout = () => {
         setSubmitting(false);
         await openSnapPayment(orderId);
       } else {
-        if (!buyNowItem) clearCart();
+        if (!buyNowItem) {
+          if (selectedCartItems) removeItems(selectedCartItems);
+          else clearCart();
+        }
         toast({ title: 'Pesanan berhasil!', description: `No. ${result.order.order_number}` });
         navigate(`/orders/${orderId}`, { replace: true });
       }

@@ -29,9 +29,12 @@ const ChatWidget = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
 
-  // Reload bot config setiap kali chat dibuka (agar perubahan admin langsung terasa)
+  // Reload bot config dan data thread setiap kali chat dibuka (agar perubahan admin langsung terasa dan mengecek reset harian)
   useEffect(() => {
-    if (open) setBotConfig(loadBotConfig());
+    if (open) {
+      setBotConfig(loadBotConfig());
+      setThread(null);
+    }
   }, [open]);
 
   const [catalog, setCatalog] = useState<any[]>([]);
@@ -72,12 +75,37 @@ const ChatWidget = () => {
     }
 
     setThread(t);
+
+    // Hitung penanda awal hari ini (00:00:00 local time) dalam bentuk ISO string
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartISO = todayStart.toISOString();
+
+    // Hapus pesan lama sebelum hari ini untuk meringankan sistem
+    try {
+      const { error: deleteErr } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('thread_id', t!.id)
+        .lt('created_at', todayStartISO);
+        
+      if (deleteErr) {
+        console.warn('[ChatWidget] Gagal menghapus pesan chat lama di DB (kemungkinan RLS):', deleteErr);
+      }
+    } catch (err) {
+      console.error('[ChatWidget] Terjadi kesalahan saat menghapus pesan lama:', err);
+    }
+
+    // Ambil pesan dari DB
     const { data: msgs } = await supabase
       .from('chat_messages')
       .select('*')
       .eq('thread_id', t!.id)
       .order('created_at');
-    setMessages(msgs || []);
+      
+    // Filter client-side sebagai fallback pengaman ekstra
+    const todayMsgs = (msgs || []).filter(m => m.created_at >= todayStartISO);
+    setMessages(todayMsgs);
 
     await supabase
       .from('chat_messages')
@@ -85,14 +113,31 @@ const ChatWidget = () => {
       .eq('thread_id', t!.id)
       .in('sender_role', ['admin', 'auto'])
       .eq('is_read', false);
-    await supabase.from('chat_threads').update({ unread_user: 0 }).eq('id', t!.id);
+
+    // Jika percakapan baru atau pesan hari ini kosong (telah teriset setelah jam 12 malam)
+    const isReset = todayMsgs.length === 0;
+
+    if (isReset && t) {
+      // Reset metadata thread agar tidak merujuk pesan lama
+      await supabase
+        .from('chat_threads')
+        .update({
+          last_message: null,
+          last_message_at: null,
+          unread_user: 0,
+          unread_admin: 0
+        })
+        .eq('id', t.id);
+    } else {
+      await supabase.from('chat_threads').update({ unread_user: 0 }).eq('id', t!.id);
+    }
 
     setUnread(0);
     setLoading(false);
     scrollToBottom();
 
-    // Kirim pesan sambutan otomatis jika thread baru (belum ada pesan)
-    if (isNewThread && t) {
+    // Kirim pesan sambutan otomatis jika thread baru atau teriset kosong
+    if ((isNewThread || isReset) && t) {
       const cfg = loadBotConfig();
       if (cfg.enabled) {
         setTimeout(() => triggerWelcomeMessage(t!.id, cfg), 800);
