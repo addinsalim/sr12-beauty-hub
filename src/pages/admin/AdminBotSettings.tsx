@@ -302,7 +302,7 @@ ATURAN PENTING & PROSEDUR MENJAWAB:
         const delay = Math.max(500, config.delayMs || 1000);
         const startTime = Date.now();
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
