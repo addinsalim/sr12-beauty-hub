@@ -47,121 +47,123 @@ const Navbar = () => {
       {/* Main nav — glassmorphism */}
       <div className="glass border-b border-border/40">
         <div className="container mx-auto flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 transition-transform hover:scale-[1.02]">
-            <img src="/logo.png" alt="SR12 Purwakarta" className="h-10 w-auto object-contain" />
-          </Link>
-
-          {/* Desktop nav */}
-          <nav className="hidden items-center gap-2 lg:flex">
-            {/* Home Link */}
-            <Link
-              to="/"
-              className={`underline-grow rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
-                location.pathname === '/' && !location.search
-                  ? 'text-primary font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t.nav.home}
+          <div className="flex items-center gap-6 lg:gap-8">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 transition-transform hover:scale-[1.02]">
+              <img src="/logo.png" alt="SR12 Purwakarta" className="h-10 w-auto object-contain" />
             </Link>
 
-            {/* Kategori Produk Dropdown */}
-            <div className="relative group py-2">
-              <button
-                className={`underline-grow flex items-center gap-1 px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
-                  location.pathname === '/products'
+            {/* Desktop nav */}
+            <nav className="hidden items-center gap-2 lg:flex">
+              {/* Home Link */}
+              <Link
+                to="/"
+                className={`underline-grow rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                  location.pathname === '/' && !location.search
                     ? 'text-primary font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <span>{t.nav.categories}</span>
-                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
-              </button>
-              {/* Invisible bridge to prevent hover loss */}
-              <div className="absolute top-full left-0 w-full h-2" />
-              <div className="absolute left-0 top-[calc(100%+8px)] hidden w-48 rounded-xl border border-border/40 bg-background/90 backdrop-blur-md p-1.5 shadow-elegant group-hover:block animate-scale-in z-50">
-                <Link
-                  to="/products?category=parfum"
-                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-                    location.pathname === '/products' && location.search.includes('category=parfum')
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
-                  }`}
-                >
-                  {t.nav.parfum}
-                </Link>
-                <Link
-                  to="/products?category=kosmetik"
-                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-                    location.pathname === '/products' && location.search.includes('category=kosmetik')
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
-                  }`}
-                >
-                  {t.nav.kosmetik}
-                </Link>
-                <Link
-                  to="/products?category=skincare"
-                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-                    location.pathname === '/products' && location.search.includes('category=skincare')
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
-                  }`}
-                >
-                  {t.nav.skincare}
-                </Link>
-                <Link
-                  to="/products?category=herbal"
-                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-                    location.pathname === '/products' && location.search.includes('category=herbal')
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
-                  }`}
-                >
-                  {t.nav.herbal}
-                </Link>
-              </div>
-            </div>
+                {t.nav.home}
+              </Link>
 
-            {/* Bantuan Dropdown */}
-            <div className="relative group py-2">
-              <button
-                className={`underline-grow flex items-center gap-1 px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
-                  location.pathname === '/store-location' || location.pathname === '/about'
-                    ? 'text-primary font-semibold'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <span>{t.nav.help}</span>
-                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
-              </button>
-              {/* Invisible bridge to prevent hover loss */}
-              <div className="absolute top-full left-0 w-full h-2" />
-              <div className="absolute left-0 top-[calc(100%+8px)] hidden w-48 rounded-xl border border-border/40 bg-background/90 backdrop-blur-md p-1.5 shadow-elegant group-hover:block animate-scale-in z-50">
-                <Link
-                  to="/store-location"
-                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-                    location.pathname === '/store-location'
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+              {/* Kategori Produk Dropdown */}
+              <div className="relative group py-2">
+                <button
+                  className={`underline-grow flex items-center gap-1 px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                    location.pathname === '/products'
+                      ? 'text-primary font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t.nav.storeLocation}
-                </Link>
-                <Link
-                  to="/about"
-                  className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-                    location.pathname === '/about'
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
-                  }`}
-                >
-                  {t.nav.about}
-                </Link>
+                  <span>{t.nav.categories}</span>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
+                </button>
+                {/* Invisible bridge to prevent hover loss */}
+                <div className="absolute top-full left-0 w-full h-2" />
+                <div className="absolute left-0 top-[calc(100%+8px)] hidden w-48 rounded-xl border border-border/40 bg-background/90 backdrop-blur-md p-1.5 shadow-elegant group-hover:block animate-scale-in z-50">
+                  <Link
+                    to="/products?category=parfum"
+                    className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                      location.pathname === '/products' && location.search.includes('category=parfum')
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                    }`}
+                  >
+                    {t.nav.parfum}
+                  </Link>
+                  <Link
+                    to="/products?category=kosmetik"
+                    className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                      location.pathname === '/products' && location.search.includes('category=kosmetik')
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                    }`}
+                  >
+                    {t.nav.kosmetik}
+                  </Link>
+                  <Link
+                    to="/products?category=skincare"
+                    className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                      location.pathname === '/products' && location.search.includes('category=skincare')
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                    }`}
+                  >
+                    {t.nav.skincare}
+                  </Link>
+                  <Link
+                    to="/products?category=herbal"
+                    className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                      location.pathname === '/products' && location.search.includes('category=herbal')
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                    }`}
+                  >
+                    {t.nav.herbal}
+                  </Link>
+                </div>
               </div>
-            </div>
-          </nav>
+
+              {/* Bantuan Dropdown */}
+              <div className="relative group py-2">
+                <button
+                  className={`underline-grow flex items-center gap-1 px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                    location.pathname === '/store-location' || location.pathname === '/about'
+                      ? 'text-primary font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <span>{t.nav.help}</span>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
+                </button>
+                {/* Invisible bridge to prevent hover loss */}
+                <div className="absolute top-full left-0 w-full h-2" />
+                <div className="absolute left-0 top-[calc(100%+8px)] hidden w-48 rounded-xl border border-border/40 bg-background/90 backdrop-blur-md p-1.5 shadow-elegant group-hover:block animate-scale-in z-50">
+                  <Link
+                    to="/store-location"
+                    className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                      location.pathname === '/store-location'
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                    }`}
+                  >
+                    {t.nav.storeLocation}
+                  </Link>
+                  <Link
+                    to="/about"
+                    className={`block rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
+                      location.pathname === '/about'
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                    }`}
+                  >
+                    {t.nav.about}
+                  </Link>
+                </div>
+              </div>
+            </nav>
+          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-1 sm:gap-2">
