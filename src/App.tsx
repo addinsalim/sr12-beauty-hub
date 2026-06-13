@@ -38,6 +38,7 @@ import StoreLocation from "./pages/StoreLocation";
 import AdminVouchers from "./pages/admin/AdminVouchers";
 import AdminChat from "./pages/admin/AdminChat";
 import AdminBotSettings from "./pages/admin/AdminBotSettings";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <ScrollToTop />
                 <Routes>
                   <Route element={<MainLayout />}>
                     <Route path="/" element={<Index />} />
