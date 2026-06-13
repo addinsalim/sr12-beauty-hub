@@ -204,7 +204,7 @@ const Cart = () => {
 
                     {/* Checkout Summary */}
                     <div className="lg:col-span-1">
-                        <div className="rounded-2xl sm:rounded-3xl glass-strong border border-border/40 p-5 sm:p-8 shadow-glow opacity-0 animate-slide-in-right lg:sticky lg:top-28" style={{ animationDelay: '0.3s' }}>
+                        <div className="rounded-2xl sm:rounded-3xl glass-strong border border-border/40 p-5 sm:p-8 shadow-glow opacity-0 animate-fade-in lg:sticky lg:top-28" style={{ animationDelay: '0.3s' }}>
                             <h2 className="mb-6 font-display text-xl font-bold text-foreground">Ringkasan Belanja</h2>
 
                             <div className="space-y-4 border-b border-border/30 pb-6 text-sm">
