@@ -91,6 +91,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const resetPassword = async (email: string) => {
+    // Check if email exists in the database
+    const { data: exists, error: checkError } = await supabase.rpc('check_email_exists', {
+      p_email: email,
+    });
+
+    if (checkError) {
+      return { error: checkError };
+    }
+
+    if (!exists) {
+      return { error: new Error('Email tidak terdaftar di sistem kami. Silakan periksa kembali.') };
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });

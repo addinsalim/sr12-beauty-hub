@@ -35,4 +35,4 @@ USING (auth.uid() = user_id);
 CREATE TRIGGER update_cart_items_updated_at
 BEFORE UPDATE ON public.cart_items
 FOR EACH ROW
-EXECUTE FUNCTION update_modified_column();
+EXECUTE FUNCTION public.update_updated_at_column();

@@ -30,7 +30,7 @@ CREATE POLICY "Users can insert bot reply in own thread"
 -- Policy sudah ada di "Users update own thread", tidak perlu tambah lagi
 
 -- Konfirmasi
-SELECT conname, consrc
+SELECT conname, pg_get_constraintdef(oid) AS consrc
 FROM pg_constraint
 WHERE conrelid = 'public.chat_messages'::regclass
   AND contype = 'c';
