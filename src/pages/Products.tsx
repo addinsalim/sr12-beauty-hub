@@ -11,7 +11,7 @@ const Products = () => {
   const categoryFilter = searchParams.get('category');
   const urlQuery = searchParams.get('q') || '';
   const [search, setSearch] = useState(urlQuery);
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('best-seller');
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -149,14 +149,13 @@ const Products = () => {
             ))}
           </div>
 
-          {/* Sort */}
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
             className="w-full sm:w-auto rounded-full glass px-4 py-2.5 sm:py-2 text-sm text-foreground outline-none transition-all focus:shadow-glow focus:ring-1 focus:ring-primary/30"
           >
-            <option value="newest">Terbaru</option>
             <option value="best-seller">Terlaris (Ulasan & Rating)</option>
+            <option value="newest">Terbaru</option>
             <option value="price-low">Harga Terendah</option>
             <option value="price-high">Harga Tertinggi</option>
             <option value="rating">Rating Tertinggi</option>
