@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resetPassword = async (email: string) => {
     // Check if email exists in the database
     const { data: exists, error: checkError } = await supabase.rpc('check_email_exists', {
-      p_email: email,
+      p_email: email.trim().toLowerCase(),
     });
 
     if (checkError) {
