@@ -7,10 +7,10 @@ import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useToast } from '@/hooks/use-toast';
 import { formatPrice } from '@/lib/supabaseHelpers';
-import productParfum from '@/assets/product-parfum.png';
-import productSkincare from '@/assets/product-skincare.png';
-import productKosmetik from '@/assets/product-kosmetik.png';
-import productHerbal from '@/assets/product-herbal.png';
+import productParfum from '@/assets/product-parfum.webp';
+import productSkincare from '@/assets/product-skincare.webp';
+import productKosmetik from '@/assets/product-kosmetik.webp';
+import productHerbal from '@/assets/product-herbal.webp';
 
 const categoryImages: Record<string, string> = {
   parfum: productParfum,

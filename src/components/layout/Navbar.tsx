@@ -50,7 +50,7 @@ const Navbar = () => {
           <div className="flex items-center gap-6 lg:gap-8">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 transition-transform hover:scale-[1.02]">
-              <img src="/logo.png" alt="SR12 Purwakarta" className="h-10 w-auto object-contain" />
+              <img src="/logo.webp" alt="SR12 Purwakarta" className="h-10 w-auto object-contain" />
             </Link>
 
             {/* Desktop nav */}
@@ -277,7 +277,7 @@ const Navbar = () => {
             {/* Mobile header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
               <Link to="/" onClick={() => setIsOpen(false)}>
-                <img src="/logo.png" alt="SR12 Purwakarta" className="h-8 w-auto object-contain" />
+                <img src="/logo.webp" alt="SR12 Purwakarta" className="h-8 w-auto object-contain" />
               </Link>
               <button
                 onClick={() => setIsOpen(false)}

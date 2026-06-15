@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
-import heroBanner from '@/assets/hero-banner.png';
+import heroBanner from '@/assets/hero-banner.webp';
 
 const HeroSection = () => {
   const { t } = useI18n();

@@ -8,9 +8,9 @@ import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useToast } from '@/hooks/use-toast';
 import { trackRecentlyViewed } from '@/lib/recentlyViewed';
-import productParfum from '@/assets/product-parfum.png';
-import productSkincare from '@/assets/product-skincare.png';
-import productKosmetik from '@/assets/product-kosmetik.png';
+import productParfum from '@/assets/product-parfum.webp';
+import productSkincare from '@/assets/product-skincare.webp';
+import productKosmetik from '@/assets/product-kosmetik.webp';
 import ProductCard from '@/components/ProductCard';
 import ProductReviews from '@/components/ProductReviews';
 

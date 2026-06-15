@@ -6,9 +6,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatPrice } from '@/lib/supabaseHelpers';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import productParfum from '@/assets/product-parfum.png';
-import productSkincare from '@/assets/product-skincare.png';
-import productKosmetik from '@/assets/product-kosmetik.png';
+import productParfum from '@/assets/product-parfum.webp';
+import productSkincare from '@/assets/product-skincare.webp';
+import productKosmetik from '@/assets/product-kosmetik.webp';
 
 const categoryImages: Record<string, string> = {
   parfum: productParfum,

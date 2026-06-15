@@ -1,5 +1,5 @@
 import { Shield, Award, Leaf, Heart } from 'lucide-react';
-import heroBanner from '@/assets/hero-banner.png';
+import heroBanner from '@/assets/hero-banner.webp';
 
 const About = () => {
   const values = [

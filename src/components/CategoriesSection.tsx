@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
-import productParfum from '@/assets/product-parfum.png';
-import productSkincare from '@/assets/product-skincare.png';
-import productKosmetik from '@/assets/product-kosmetik.png';
-import productHerbal from '@/assets/product-herbal.png';
+import productParfum from '@/assets/product-parfum.webp';
+import productSkincare from '@/assets/product-skincare.webp';
+import productKosmetik from '@/assets/product-kosmetik.webp';
+import productHerbal from '@/assets/product-herbal.webp';
 
 const CategoriesSection = () => {
   const { t } = useI18n();
