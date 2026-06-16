@@ -101,7 +101,7 @@ const OrderDetail = () => {
       }
       window.snap.pay(snap_token, {
         onSuccess: async () => {
-          toast({ title: '✅ Pembayaran berhasil!', description: 'Mengarahkan ke daftar pesanan...' });
+          toast({ title: '✅ Pembayaran berhasil!', description: 'Halaman invoice Anda sedang diperbarui...' });
           setOrder((prev: any) => ({ ...prev, status: 'processing' }));
           setPayment((prev: any) => ({ ...prev, status: 'confirmed' }));
           // Direct update to DB so the status instantly changes to Diproses
@@ -111,7 +111,6 @@ const OrderDetail = () => {
           } catch (err) {
             console.error('Error updating order/payment status:', err);
           }
-          setTimeout(() => navigate('/my-orders', { replace: true }), 1500);
         },
         onPending: () => {
           toast({ title: '⏳ Menunggu pembayaran', description: 'Cek status di Pesanan Saya.' });

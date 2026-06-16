@@ -190,7 +190,7 @@ const Checkout = () => {
             console.error('Error updating order/payment status:', err);
           }
           toast({ title: '✅ Pembayaran berhasil!', description: 'Pesanan Anda sedang diproses.' });
-          setTimeout(() => navigate('/my-orders', { replace: true }), 1500);
+          setTimeout(() => navigate(`/orders/${orderId}`, { replace: true }), 1500);
         },
         onPending: () => {
           if (!buyNowItem) {
