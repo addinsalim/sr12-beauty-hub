@@ -177,10 +177,17 @@ const Checkout = () => {
       }
 
       window.snap.pay(snap_token, {
-        onSuccess: () => {
+        onSuccess: async () => {
           if (!buyNowItem) {
             if (selectedCartItems) removeItems(selectedCartItems);
             else clearCart();
+          }
+          // Direct update to DB so the status instantly changes to Diproses
+          try {
+            await supabase.from('orders').update({ status: 'processing' }).eq('id', orderId);
+            await supabase.from('payments').update({ status: 'confirmed', confirmed_at: new Date().toISOString() }).eq('order_id', orderId);
+          } catch (err) {
+            console.error('Error updating order/payment status:', err);
           }
           toast({ title: '✅ Pembayaran berhasil!', description: 'Pesanan Anda sedang diproses.' });
           setTimeout(() => navigate('/my-orders', { replace: true }), 1500);

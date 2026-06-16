@@ -100,10 +100,17 @@ const OrderDetail = () => {
         return;
       }
       window.snap.pay(snap_token, {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast({ title: '✅ Pembayaran berhasil!', description: 'Mengarahkan ke daftar pesanan...' });
           setOrder((prev: any) => ({ ...prev, status: 'processing' }));
           setPayment((prev: any) => ({ ...prev, status: 'confirmed' }));
+          // Direct update to DB so the status instantly changes to Diproses
+          try {
+            await supabase.from('orders').update({ status: 'processing' }).eq('id', order.id);
+            await supabase.from('payments').update({ status: 'confirmed', confirmed_at: new Date().toISOString() }).eq('order_id', order.id);
+          } catch (err) {
+            console.error('Error updating order/payment status:', err);
+          }
           setTimeout(() => navigate('/my-orders', { replace: true }), 1500);
         },
         onPending: () => {
