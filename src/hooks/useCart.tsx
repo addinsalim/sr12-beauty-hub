@@ -49,6 +49,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch { return []; }
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const lastSyncedUserId = React.useRef<string | null>(null);
   
   // Refs for realtime sync
   const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -63,11 +64,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync with DB when logged in
   useEffect(() => {
-    if (!user || isSyncing) return;
+    if (!user || isSyncing) {
+      if (!user) lastSyncedUserId.current = null;
+      return;
+    }
+    
+    if (lastSyncedUserId.current === user.id) return;
     
     const fetchAndSync = async () => {
       setIsSyncing(true);
       try {
+        lastSyncedUserId.current = user.id;
         // Fetch latest user data to get metadata
         const { data: { user: currentUser }, error } = await supabase.auth.getUser();
         if (error || !currentUser) throw error;
@@ -85,6 +92,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (err) {
         console.error('Error syncing cart:', err);
+        lastSyncedUserId.current = null;
       } finally {
         setIsSyncing(false);
       }
@@ -146,9 +154,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Also sync to user metadata if logged in
     if (user && !isSyncing) {
-      supabase.auth.updateUser({
-        data: { cart: items }
-      }).catch(err => console.error('Error updating remote cart:', err));
+      const remoteCart = user.user_metadata?.cart;
+      const localCartStr = JSON.stringify(items);
+      const remoteCartStr = JSON.stringify(remoteCart || []);
+      
+      if (localCartStr !== remoteCartStr) {
+        supabase.auth.updateUser({
+          data: { cart: items }
+        }).catch(err => console.error('Error updating remote cart:', err));
+      }
 
       // Broadcast to other browsers/devices
       if (channelRef.current) {
