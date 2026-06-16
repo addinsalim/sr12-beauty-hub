@@ -314,6 +314,12 @@ const OrderDetail = () => {
                 <p className="text-muted-foreground">
                   Metode: <span className="text-foreground font-semibold">{shipment.courier || (order.shipping_method === 'local' ? 'Kurir Toko' : 'Ekspedisi Reguler')}</span>
                 </p>
+
+                {shipment.courier_name && (
+                  <p className="text-muted-foreground">
+                    Nama Kurir: <span className="text-foreground font-semibold">{shipment.courier_name}</span>
+                  </p>
+                )}
                 
                 {shipment.tracking_number && (
                   <p className="text-muted-foreground">

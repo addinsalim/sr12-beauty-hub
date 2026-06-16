@@ -46,10 +46,9 @@ const AdminShipments = () => {
 
   // Tab 3: Shipments
   const [shipments, setShipments] = useState<any[]>([]);
-  const [couriers, setCouriers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [editShipmentState, setEditShipmentState] = useState<Record<string, { courier: string; tracking_number: string; courier_user_id: string; status: string }>>({});
+  const [editShipmentState, setEditShipmentState] = useState<Record<string, { courier: string; tracking_number: string; courier_name: string; status: string }>>({});
 
   // Fetch configs, zones, shipments
   const fetchData = useCallback(async () => {
@@ -105,28 +104,11 @@ const AdminShipments = () => {
         initialEditState[s.id] = {
           courier: s.courier || '',
           tracking_number: s.tracking_number || '',
-          courier_user_id: s.courier_user_id || '',
+          courier_name: s.courier_name || '',
           status: s.status || 'pending'
         };
       });
       setEditShipmentState(initialEditState);
-
-      // 4. Courier users
-      const { data: courierRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'courier');
-      
-      if (courierRoles && courierRoles.length > 0) {
-        const courierIds = courierRoles.map(cr => cr.user_id);
-        const { data: courierProfiles } = await supabase
-          .from('profiles')
-          .select('user_id, full_name, phone')
-          .in('user_id', courierIds);
-        setCouriers(courierProfiles || []);
-      } else {
-        setCouriers([]);
-      }
 
     } catch (err: any) {
       toast.error('Gagal mengambil data pengiriman: ' + err.message);
@@ -287,7 +269,7 @@ const AdminShipments = () => {
         courier: editData.courier.trim() || null,
         tracking_number: editData.tracking_number.trim() || null,
         status: editData.status,
-        courier_user_id: editData.courier_user_id || null,
+        courier_name: editData.courier_name.trim() || null,
       };
 
       // Set timestamp if status changes to shipped / delivered
@@ -359,7 +341,7 @@ const AdminShipments = () => {
   };
 
   const filteredShipments = shipments.filter(s => {
-    const editData = editShipmentState[s.id] || { courier: '', tracking_number: '', courier_user_id: '', status: 'pending' };
+    const editData = editShipmentState[s.id] || { courier: '', tracking_number: '', courier_name: '', status: 'pending' };
     const matchesStatus = statusFilter === 'all' || editData.status === statusFilter;
     
     if (!searchQuery) return matchesStatus;
@@ -705,11 +687,11 @@ const AdminShipments = () => {
               ) : (
                 <div className="space-y-4">
                   {filteredShipments.map((s: any) => {
-                    const editVal = editShipmentState[s.id] || { courier: '', tracking_number: '', courier_user_id: '', status: 'pending' };
+                    const editVal = editShipmentState[s.id] || { courier: '', tracking_number: '', courier_name: '', status: 'pending' };
                     const isChanged = 
                       editVal.courier !== (s.courier || '') ||
                       editVal.tracking_number !== (s.tracking_number || '') ||
-                      editVal.courier_user_id !== (s.courier_user_id || '') ||
+                      editVal.courier_name !== (s.courier_name || '') ||
                       editVal.status !== (s.status || 'pending');
 
                     const getStatusColor = (st: string) => {
@@ -803,17 +785,13 @@ const AdminShipments = () => {
                           </div>
 
                           <div className="space-y-1">
-                            <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Tugaskan Kurir</Label>
-                            <select
-                              value={editVal.courier_user_id}
-                              onChange={e => handleUpdateShipmentState(s.id, 'courier_user_id', e.target.value)}
-                              className="w-full h-9 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                            >
-                              <option value="">-- Tanpa Kurir Khusus --</option>
-                              {couriers.map(c => (
-                                <option key={c.user_id} value={c.user_id}>{c.full_name} ({c.phone || 'No Phone'})</option>
-                              ))}
-                            </select>
+                            <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Nama Kurir (Penugasan)</Label>
+                            <Input
+                              value={editVal.courier_name}
+                              onChange={e => handleUpdateShipmentState(s.id, 'courier_name', e.target.value)}
+                              placeholder="Nama petugas kurir..."
+                              className="h-9 text-xs"
+                            />
                           </div>
 
                           <div className="space-y-1">

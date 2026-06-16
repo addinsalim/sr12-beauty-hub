@@ -671,6 +671,7 @@ export type Database = {
       shipments: {
         Row: {
           courier: string
+          courier_name: string | null
           courier_user_id: string | null
           created_at: string
           delivered_at: string | null
@@ -682,6 +683,7 @@ export type Database = {
         }
         Insert: {
           courier: string
+          courier_name?: string | null
           courier_user_id?: string | null
           created_at?: string
           delivered_at?: string | null
@@ -693,6 +695,7 @@ export type Database = {
         }
         Update: {
           courier?: string
+          courier_name?: string | null
           courier_user_id?: string | null
           created_at?: string
           delivered_at?: string | null
