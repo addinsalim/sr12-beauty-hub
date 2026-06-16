@@ -49,6 +49,8 @@ type Address = {
   postal_code: string | null;
   full_address: string;
   is_default: boolean | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 type Notification = {
@@ -82,10 +84,14 @@ const Profile = () => {
   const [editingAddr, setEditingAddr] = useState<Address | null>(null);
   const [deletingAddr, setDeletingAddr] = useState<Address | null>(null);
   const [savingAddr, setSavingAddr] = useState(false);
-  const [addrForm, setAddrForm] = useState({
+  const [addrForm, setAddrForm] = useState<any>({
     label: 'Rumah', recipient_name: '', phone: '', province: '', city: '',
     district: '', postal_code: '', full_address: '', is_default: false,
+    latitude: null, longitude: null,
   });
+
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingNotif, setLoadingNotif] = useState(true);
@@ -135,6 +141,87 @@ const Profile = () => {
       .from('orders').select('*', { count: 'exact', head: true }).eq('user_id', user!.id);
     setOrderCount(count || 0);
   };
+
+  // Leaflet Map Picker Initialization for Profile Page
+  useEffect(() => {
+    if (!addrDialog) {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const mapContainer = document.getElementById('profile-map-picker');
+      if (!mapContainer || mapRef.current) return;
+
+      const initialLat = addrForm.latitude || -6.7027;
+      const initialLng = addrForm.longitude || 107.5645;
+
+      const L = (window as any).L;
+      if (!L) return;
+
+      // Fix Leaflet default marker icon paths
+      const DefaultIcon = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      L.Marker.prototype.options.icon = DefaultIcon;
+
+      const map = L.map('profile-map-picker').setView([initialLat, initialLng], 13);
+      mapRef.current = map;
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const marker = L.marker([initialLat, initialLng], { draggable: true }).addTo(map);
+      markerRef.current = marker;
+
+      marker.on('dragend', () => {
+        const position = marker.getLatLng();
+        setAddrForm((prev: any) => ({
+          ...prev,
+          latitude: position.lat,
+          longitude: position.lng
+        }));
+      });
+
+      map.on('click', (e: any) => {
+        const coords = e.latlng;
+        marker.setLatLng(coords);
+        setAddrForm((prev: any) => ({
+          ...prev,
+          latitude: coords.lat,
+          longitude: coords.lng
+        }));
+      });
+
+      if (!addrForm.latitude) {
+        setAddrForm((prev: any) => ({
+          ...prev,
+          latitude: initialLat,
+          longitude: initialLng
+        }));
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, [addrDialog]);
 
   // ---- Profile save ----
   const handleSaveProfile = async () => {
@@ -221,6 +308,7 @@ const Profile = () => {
       label: 'Rumah', recipient_name: profile?.full_name || '', phone: profile?.phone || '',
       province: '', city: '', district: '', postal_code: '', full_address: '',
       is_default: addresses.length === 0,
+      latitude: null, longitude: null,
     });
     setAddrDialog(true);
   };
@@ -231,6 +319,7 @@ const Profile = () => {
       label: a.label || 'Rumah', recipient_name: a.recipient_name, phone: a.phone,
       province: a.province, city: a.city, district: a.district || '',
       postal_code: a.postal_code || '', full_address: a.full_address, is_default: !!a.is_default,
+      latitude: a.latitude || null, longitude: a.longitude || null,
     });
     setAddrDialog(true);
   };
@@ -256,6 +345,8 @@ const Profile = () => {
       postal_code: addrForm.postal_code.trim() || null,
       full_address: addrForm.full_address.trim(),
       is_default: addrForm.is_default,
+      latitude: addrForm.latitude,
+      longitude: addrForm.longitude,
     };
 
     const { error } = editingAddr
@@ -560,6 +651,23 @@ const Profile = () => {
               <Label>Alamat Lengkap *</Label>
               <Textarea value={addrForm.full_address} onChange={e => setAddrForm(f => ({ ...f, full_address: e.target.value }))} maxLength={500} rows={3} placeholder="Jalan, no rumah, RT/RW, patokan..." />
             </div>
+            
+            {/* Map Picker inside Profile Address Dialog */}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                📍 Tentukan Lokasi di Peta
+              </Label>
+              <p className="text-[11px] text-muted-foreground leading-normal">
+                Geser pin peta ke lokasi pengiriman Anda untuk menghitung jarak pengiriman lokal secara otomatis.
+              </p>
+              <div id="profile-map-picker" className="h-[180px] w-full rounded-lg border border-border mt-1 shadow-inner" style={{ zIndex: 1 }} />
+              {addrForm.latitude !== null && (
+                <p className="text-[11px] text-primary font-medium mt-1">
+                  Koordinat terpilih: {Number(addrForm.latitude).toFixed(6)}, {Number(addrForm.longitude).toFixed(6)}
+                </p>
+              )}
+            </div>
+
             <div className="flex items-center gap-2">
               <Switch checked={addrForm.is_default} onCheckedChange={c => setAddrForm(f => ({ ...f, is_default: c }))} />
               <Label className="cursor-pointer">Jadikan alamat utama</Label>

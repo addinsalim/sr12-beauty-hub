@@ -23,6 +23,8 @@ export type Database = {
           id: string
           is_default: boolean | null
           label: string | null
+          latitude: number | null
+          longitude: number | null
           phone: string
           postal_code: string | null
           province: string
@@ -37,6 +39,8 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           label?: string | null
+          latitude?: number | null
+          longitude?: number | null
           phone: string
           postal_code?: string | null
           province: string
@@ -51,6 +55,8 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           label?: string | null
+          latitude?: number | null
+          longitude?: number | null
           phone?: string
           postal_code?: string | null
           province?: string
@@ -298,6 +304,7 @@ export type Database = {
           notes: string | null
           order_number: string
           shipping_cost: number
+          shipping_method: string | null
           status: string
           subtotal: number
           total: number
@@ -311,6 +318,7 @@ export type Database = {
           notes?: string | null
           order_number?: string
           shipping_cost?: number
+          shipping_method?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -324,6 +332,7 @@ export type Database = {
           notes?: string | null
           order_number?: string
           shipping_cost?: number
+          shipping_method?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -702,6 +711,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shipping_configs: {
+        Row: {
+          id: string
+          store_lat: number
+          store_lng: number
+          local_delivery_active: boolean
+          cod_active: boolean
+          cod_min_purchase: number
+          zone_shipping_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          store_lat?: number
+          store_lng?: number
+          local_delivery_active?: boolean
+          cod_active?: boolean
+          cod_min_purchase?: number
+          zone_shipping_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          store_lat?: number
+          store_lng?: number
+          local_delivery_active?: boolean
+          cod_active?: boolean
+          cod_min_purchase?: number
+          zone_shipping_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shipping_zones: {
+        Row: {
+          id: string
+          name: string
+          provinces: string[]
+          cost: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          provinces: string[]
+          cost: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          provinces?: string[]
+          cost?: number
+          created_at?: string
+        }
+        Relationships: []
       }
       user_points: {
         Row: {

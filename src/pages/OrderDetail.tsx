@@ -305,11 +305,47 @@ const OrderDetail = () => {
 
           {/* Shipment */}
           {shipment && (
-            <div className="rounded-xl border border-border bg-card p-5 print:border-0 print:p-0">
-              <h2 className="flex items-center gap-2 text-base font-bold text-card-foreground mb-2"><Truck className="h-4 w-4 text-primary" /> Pengiriman</h2>
-              <p className="text-sm text-muted-foreground">Kurir: <span className="text-foreground font-medium">{shipment.courier}</span></p>
-              {shipment.tracking_number && <p className="text-sm text-muted-foreground">No. Resi: <span className="font-mono text-foreground font-medium">{shipment.tracking_number}</span></p>}
-              <p className="text-sm text-muted-foreground">Status: <span className="text-foreground font-medium">{shipment.status}</span></p>
+            <div className="rounded-xl border border-border bg-card p-5 print:border-0 print:p-0 space-y-3">
+              <h2 className="flex items-center gap-2 text-base font-bold text-card-foreground mb-1">
+                <Truck className="h-4 w-4 text-primary" /> Status Pengiriman
+              </h2>
+              
+              <div className="space-y-2 text-sm">
+                <p className="text-muted-foreground">
+                  Metode: <span className="text-foreground font-semibold">{shipment.courier || (order.shipping_method === 'local' ? 'Kurir Toko' : 'Ekspedisi Reguler')}</span>
+                </p>
+                
+                {shipment.tracking_number && (
+                  <p className="text-muted-foreground">
+                    No. Resi: <span className="font-mono text-foreground bg-secondary px-2 py-0.5 rounded font-semibold text-xs border border-border">{shipment.tracking_number}</span>
+                  </p>
+                )}
+                
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span>Status:</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                    shipment.status === 'delivered'
+                      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400'
+                      : shipment.status === 'shipped'
+                      ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400'
+                      : 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/20 dark:text-yellow-400'
+                  }`}>
+                    {shipment.status === 'delivered' ? '✅ Diterima' : shipment.status === 'shipped' ? '🚚 Sedang Dikirim' : '⏳ Diproses / Pending'}
+                  </span>
+                </div>
+
+                {shipment.status === 'shipped' && shipment.shipped_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Dikirim pada: <span className="font-medium text-foreground">{new Date(shipment.shipped_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  </p>
+                )}
+
+                {shipment.status === 'delivered' && shipment.delivered_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Diterima pada: <span className="font-medium text-foreground">{new Date(shipment.delivered_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  </p>
+                )}
+              </div>
             </div>
           )}
 

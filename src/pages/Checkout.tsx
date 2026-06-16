@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { MapPin, Truck, Plus, ArrowLeft, Package, Loader2, ShieldCheck, Ticket, Coins, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 interface Address {
   id: string;
@@ -21,6 +33,8 @@ interface Address {
   postal_code: string;
   district: string | null;
   is_default: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 const SHIPPING_COST = 20000;
@@ -39,9 +53,10 @@ const Checkout = () => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState({
+  const [newAddress, setNewAddress] = useState<any>({
     label: 'Rumah', recipient_name: '', phone: '',
     full_address: '', city: '', province: '', postal_code: '', district: '',
+    latitude: null, longitude: null,
   });
 
   const [paymentMethod, setPaymentMethod] = useState<'midtrans' | 'cod'>('midtrans');
@@ -49,6 +64,14 @@ const Checkout = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const snapScriptLoaded = useRef(false);
+
+  // Shipping configurations
+  const [shippingConfigs, setShippingConfigs] = useState<any>(null);
+  const [shippingZones, setShippingZones] = useState<any[]>([]);
+  const [shippingMethod, setShippingMethod] = useState<'local' | 'zone'>('zone');
+
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
 
   // Voucher & points
   const [voucherCode, setVoucherCode] = useState('');
@@ -106,8 +129,161 @@ const Checkout = () => {
       .then(({ data }) => setAvailablePoints(data?.balance || 0));
   }, [user]);
 
+  // Load shipping configurations and zones
+  useEffect(() => {
+    supabase.from('shipping_configs').select('*').maybeSingle().then(({ data }) => {
+      if (data) setShippingConfigs(data);
+    });
+    supabase.from('shipping_zones').select('*').then(({ data }) => {
+      if (data) setShippingZones(data);
+    });
+  }, []);
+
+  // Leaflet Map Picker Initialization
+  useEffect(() => {
+    if (!showAddressForm) {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const mapContainer = document.getElementById('leaflet-map-picker');
+      if (!mapContainer || mapRef.current) return;
+
+      const defaultLat = -6.7027;
+      const defaultLng = 107.5645;
+
+      const L = (window as any).L;
+      if (!L) return;
+
+      // Fix Leaflet default marker icon paths
+      const DefaultIcon = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      L.Marker.prototype.options.icon = DefaultIcon;
+
+      const map = L.map('leaflet-map-picker').setView([defaultLat, defaultLng], 13);
+      mapRef.current = map;
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
+      markerRef.current = marker;
+
+      marker.on('dragend', () => {
+        const position = marker.getLatLng();
+        setNewAddress((prev: any) => ({
+          ...prev,
+          latitude: position.lat,
+          longitude: position.lng
+        }));
+      });
+
+      map.on('click', (e: any) => {
+        const coords = e.latlng;
+        marker.setLatLng(coords);
+        setNewAddress((prev: any) => ({
+          ...prev,
+          latitude: coords.lat,
+          longitude: coords.lng
+        }));
+      });
+
+      setNewAddress((prev: any) => ({
+        ...prev,
+        latitude: defaultLat,
+        longitude: defaultLng
+      }));
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, [showAddressForm]);
+
+  const selectedAddress = addresses.find(a => a.id === selectedAddressId);
+
+  const distance = useMemo(() => {
+    if (!selectedAddress || !selectedAddress.latitude || !selectedAddress.longitude || !shippingConfigs) return null;
+    return getDistance(
+      Number(shippingConfigs.store_lat),
+      Number(shippingConfigs.store_lng),
+      Number(selectedAddress.latitude),
+      Number(selectedAddress.longitude)
+    );
+  }, [selectedAddress, shippingConfigs]);
+
+  const matchedZone = useMemo(() => {
+    if (!selectedAddress || !shippingZones.length) return null;
+    const province = selectedAddress.province.trim().toLowerCase();
+    return shippingZones.find(z =>
+      z.provinces.some((p: string) => p.trim().toLowerCase() === province)
+    );
+  }, [selectedAddress, shippingZones]);
+
   const subtotal = checkoutItems.reduce((s, i) => s + i.price * i.quantity, 0);
-  const shippingFee = subtotal >= 200000 ? 0 : SHIPPING_COST;
+
+  const isCodAvailable = useMemo(() => {
+    return distance !== null && distance <= 10 && subtotal >= 50000;
+  }, [distance, subtotal]);
+
+  // Sync payment and shipping method
+  useEffect(() => {
+    if (paymentMethod === 'cod') {
+      setShippingMethod('local');
+    }
+  }, [paymentMethod]);
+
+  useEffect(() => {
+    if (paymentMethod === 'cod' && !isCodAvailable) {
+      setPaymentMethod('midtrans');
+      toast({
+        title: 'COD tidak tersedia',
+        description: 'Metode COD hanya tersedia untuk jarak maksimal 10 km dan minimal pembelian Rp50.000.',
+        variant: 'destructive',
+      });
+    }
+  }, [isCodAvailable, paymentMethod, toast]);
+
+  const handleShippingMethodChange = (method: 'local' | 'zone') => {
+    setShippingMethod(method);
+    if (method === 'zone' && paymentMethod === 'cod') {
+      setPaymentMethod('midtrans');
+    }
+  };
+
+  const calculatedShippingFee = useMemo(() => {
+    if (subtotal >= 200000) return 0;
+    
+    if (shippingMethod === 'local') {
+      if (distance === null) return 20000;
+      if (distance <= 3) return 5000;
+      if (distance <= 5) return 10000;
+      if (distance <= 10) return 15000;
+      return 20000;
+    } else {
+      return matchedZone ? Number(matchedZone.cost) : 20000;
+    }
+  }, [shippingMethod, distance, matchedZone, subtotal]);
+
+  const shippingFee = calculatedShippingFee;
 
   // Calculate voucher discount
   const voucherDiscount = (() => {
@@ -137,7 +313,7 @@ const Checkout = () => {
     setAddresses(prev => [...prev, addr]);
     setSelectedAddressId(addr.id);
     setShowAddressForm(false);
-    setNewAddress({ label: 'Rumah', recipient_name: '', phone: '', full_address: '', city: '', province: '', postal_code: '', district: '' });
+    setNewAddress({ label: 'Rumah', recipient_name: '', phone: '', full_address: '', city: '', province: '', postal_code: '', district: '', latitude: null, longitude: null });
     toast({ title: 'Alamat ditambahkan' });
   };
 
@@ -236,6 +412,7 @@ const Checkout = () => {
           })),
           address_id: selectedAddressId,
           payment_method: paymentMethod,
+          shipping_method: shippingMethod,
           notes: notes || undefined,
         },
       });
@@ -364,16 +541,29 @@ const Checkout = () => {
               ) : (
                 <>
                   <div className="space-y-2">
-                    {addresses.map(addr => (
-                      <label key={addr.id} className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${selectedAddressId === addr.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}>
-                        <input type="radio" name="address" className="mt-1 accent-primary" checked={selectedAddressId === addr.id} onChange={() => setSelectedAddressId(addr.id)} />
-                        <div className="text-sm">
-                          <p className="font-medium text-card-foreground">{addr.recipient_name} <span className="text-xs text-muted-foreground">({addr.label})</span></p>
-                          <p className="text-muted-foreground">{addr.phone}</p>
-                          <p className="text-muted-foreground">{addr.full_address}, {addr.district && `${addr.district}, `}{addr.city}, {addr.province} {addr.postal_code}</p>
-                        </div>
-                      </label>
-                    ))}
+                    {addresses.map(addr => {
+                      const addrDistance = (addr.latitude && addr.longitude && shippingConfigs)
+                        ? getDistance(Number(shippingConfigs.store_lat), Number(shippingConfigs.store_lng), Number(addr.latitude), Number(addr.longitude))
+                        : null;
+                      
+                      return (
+                        <label key={addr.id} className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${selectedAddressId === addr.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}>
+                          <input type="radio" name="address" className="mt-1 accent-primary" checked={selectedAddressId === addr.id} onChange={() => setSelectedAddressId(addr.id)} />
+                          <div className="text-sm flex-1">
+                            <div className="flex justify-between items-start flex-wrap gap-1">
+                              <p className="font-medium text-card-foreground">{addr.recipient_name} <span className="text-xs text-muted-foreground">({addr.label})</span></p>
+                              {addrDistance !== null ? (
+                                <span className="text-xs font-semibold text-primary">📍 {addrDistance.toFixed(1)} km dari toko</span>
+                              ) : (
+                                <span className="text-[10px] text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20 px-2 py-0.5 rounded border border-yellow-200">📍 Belum pin lokasi peta</span>
+                              )}
+                            </div>
+                            <p className="text-muted-foreground">{addr.phone}</p>
+                            <p className="text-muted-foreground">{addr.full_address}, {addr.district && `${addr.district}, `}{addr.city}, {addr.province} {addr.postal_code}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                   {!showAddressForm && (
                     <Button variant="ghost" size="sm" className="mt-3" onClick={() => setShowAddressForm(true)}><Plus className="mr-1 h-4 w-4" /> Tambah Alamat Baru</Button>
@@ -394,7 +584,25 @@ const Checkout = () => {
                     <div><Label className="text-xs">Kode Pos</Label><Input value={newAddress.postal_code} onChange={e => setNewAddress(p => ({ ...p, postal_code: e.target.value }))} /></div>
                   </div>
                   <div><Label className="text-xs">Alamat Lengkap *</Label><Input value={newAddress.full_address} onChange={e => setNewAddress(p => ({ ...p, full_address: e.target.value }))} /></div>
-                  <div className="flex gap-2">
+                  
+                  {/* Leaflet Map Picker */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      📍 Tentukan Lokasi di Peta
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground leading-normal">
+                      Geser pin peta ke lokasi pengiriman yang tepat untuk menghitung jarak & mengaktifkan Antar Toko / COD.
+                    </p>
+                    <div id="leaflet-map-picker" className="h-[220px] w-full rounded-lg border border-border mt-1 shadow-inner" style={{ zIndex: 1 }} />
+                    {newAddress.latitude !== null && (
+                      <p className="text-[11px] text-primary font-medium mt-1">
+                        Koordinat: {Number(newAddress.latitude).toFixed(6)}, {Number(newAddress.longitude).toFixed(6)} 
+                        {shippingConfigs && ` (${getDistance(Number(shippingConfigs.store_lat), Number(shippingConfigs.store_lng), Number(newAddress.latitude), Number(newAddress.longitude)).toFixed(1)} km dari toko)`}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
                     <Button size="sm" onClick={handleAddAddress}>Simpan</Button>
                     <Button size="sm" variant="ghost" onClick={() => setShowAddressForm(false)}>Batal</Button>
                   </div>
@@ -405,22 +613,74 @@ const Checkout = () => {
             {/* 3. Shipping */}
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
               <h2 className="flex items-center gap-2 font-display text-base font-bold text-card-foreground mb-3">
-                <Truck className="h-5 w-5 text-primary" /> Pengiriman
+                <Truck className="h-5 w-5 text-primary" /> Metode Pengiriman
               </h2>
-              <div className="rounded-lg border border-primary bg-primary/5 p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-card-foreground">Reguler</p>
-                    <p className="text-xs text-muted-foreground">Estimasi 3-5 hari kerja</p>
-                  </div>
-                  {shippingFee === 0
-                    ? <span className="text-sm font-bold text-green-600">GRATIS</span>
-                    : <span className="text-sm font-bold text-primary">{formatPrice(shippingFee)}</span>
-                  }
-                </div>
+              
+              <div className="space-y-3">
+                {/* Local Delivery Option */}
+                {(!shippingConfigs || shippingConfigs.local_delivery_active) && (
+                  <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${shippingMethod === 'local' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'} ${distance !== null && distance > 10 ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <input 
+                      type="radio" 
+                      name="shipping_method" 
+                      className="mt-1 accent-primary" 
+                      checked={shippingMethod === 'local'} 
+                      disabled={distance !== null && distance > 10}
+                      onChange={() => handleShippingMethodChange('local')} 
+                    />
+                    <div className="text-sm flex-1">
+                      <div className="flex justify-between items-start flex-wrap">
+                        <p className="font-medium text-card-foreground">Antar Toko (Local Delivery)</p>
+                        {distance !== null && distance <= 10 && (
+                          <span className="text-sm font-bold text-primary">
+                            {subtotal >= 200000 ? 'GRATIS' : formatPrice(distance <= 3 ? 5000 : distance <= 5 ? 10000 : 15000)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Layanan pengantaran kurir lokal dalam radius maksimal 10 km.</p>
+                      {distance !== null && (
+                        <p className="text-xs font-semibold mt-1 text-primary">
+                          {distance <= 10 ? `📍 Jarak: ${distance.toFixed(1)} km (Dalam Jangkauan)` : `📍 Jarak: ${distance.toFixed(1)} km (Di luar jangkauan > 10 km)`}
+                        </p>
+                      )}
+                      {distance === null && (
+                        <p className="text-xs text-yellow-600 font-medium mt-1">⚠️ Tentukan lokasi di peta pada alamat terpilih untuk mengaktifkan tarif lokal.</p>
+                      )}
+                    </div>
+                  </label>
+                )}
+
+                {/* Zone Shipping Option */}
+                {(!shippingConfigs || shippingConfigs.zone_shipping_active) && (
+                  <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${shippingMethod === 'zone' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'} ${paymentMethod === 'cod' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <input 
+                      type="radio" 
+                      name="shipping_method" 
+                      className="mt-1 accent-primary" 
+                      checked={shippingMethod === 'zone'} 
+                      disabled={paymentMethod === 'cod'} 
+                      onChange={() => handleShippingMethodChange('zone')} 
+                    />
+                    <div className="text-sm flex-1">
+                      <div className="flex justify-between items-start flex-wrap">
+                        <p className="font-medium text-card-foreground">Pengiriman Reguler (Zona)</p>
+                        <span className="text-sm font-bold text-primary">
+                          {subtotal >= 200000 ? 'GRATIS' : (matchedZone ? formatPrice(Number(matchedZone.cost)) : formatPrice(20000))}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Pengiriman kurir/ekspedisi regular berdasarkan lokasi provinsi Anda.</p>
+                      {selectedAddress && (
+                        <p className="text-xs font-semibold mt-1 text-primary">
+                          Wilayah: {selectedAddress.province} {matchedZone ? `(Zona: ${matchedZone.name})` : '(Zona Default)'}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                )}
               </div>
-              {shippingFee === 0 && (
-                <p className="mt-2 text-xs text-green-600">🎉 Selamat! Anda mendapat gratis ongkir untuk pembelian di atas Rp200.000</p>
+              
+              {subtotal >= 200000 && (
+                <p className="mt-3 text-xs text-green-600 font-medium">🎉 Selamat! Anda mendapat gratis ongkir untuk pembelian di atas Rp200.000</p>
               )}
             </section>
 
@@ -437,11 +697,29 @@ const Checkout = () => {
                     <p className="text-xs text-muted-foreground mt-1">Transfer Bank, Kartu Kredit, E-Wallet (GoPay, OVO, DANA), dan QRIS.</p>
                   </div>
                 </label>
-                <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}>
-                  <input type="radio" name="payment" className="mt-1 accent-primary" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
+                <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'} ${!isCodAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <input 
+                    type="radio" 
+                    name="payment" 
+                    className="mt-1 accent-primary" 
+                    checked={paymentMethod === 'cod'} 
+                    disabled={!isCodAvailable}
+                    onChange={() => setPaymentMethod('cod')} 
+                  />
                   <div>
-                    <p className="font-medium text-card-foreground text-sm">Bayar di Tempat (COD)</p>
+                    <p className="font-medium text-card-foreground text-sm flex items-center gap-1.5">
+                      Bayar di Tempat (COD)
+                      {!isCodAvailable && (
+                        <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-normal">Tidak Tersedia</span>
+                      )}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">Bayar dengan uang tunai langsung ke kurir saat pesanan tiba.</p>
+                    {!isCodAvailable && (
+                      <p className="text-[10px] text-destructive mt-1 font-medium leading-normal">
+                        Hanya dalam radius 10 km dari toko & minimal belanja Rp50.000.
+                        {distance !== null ? ` Jarak Anda: ${distance.toFixed(1)} km.` : ' Pin lokasi Anda di peta terlebih dahulu.'}
+                      </p>
+                    )}
                   </div>
                 </label>
               </div>

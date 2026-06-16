@@ -18,6 +18,7 @@ interface CreateOrderRequest {
   payment_method: string
   payment_detail?: string
   notes?: string
+  shipping_method: 'local' | 'zone'
 }
 
 type Resolved = {
@@ -27,18 +28,23 @@ type Resolved = {
   unit_price: number
 }
 
-const FREE_SHIPPING_THRESHOLD = 200000
-const FLAT_SHIPPING = 20000
-
-function calculateShipping(subtotal: number): number {
-  return subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING
-}
-
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
+}
+
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371 // km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
 }
 
 async function resolvePricing(
@@ -145,13 +151,14 @@ Deno.serve(async (req) => {
     if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
     const body: CreateOrderRequest = await req.json()
-    const { items, address_id, payment_method, payment_detail, notes } = body
+    const { items, address_id, payment_method, payment_detail, notes, shipping_method } = body
 
     // Validasi input
     if (!items?.length) throw new Error('Keranjang kosong')
     if (items.length > 50) throw new Error('Terlalu banyak item')
     if (!address_id) throw new Error('Alamat pengiriman harus dipilih')
     if (!payment_method) throw new Error('Metode pembayaran harus dipilih')
+    if (!shipping_method) throw new Error('Metode pengiriman harus dipilih')
 
     for (const i of items) {
       if (!i.product_id || !Number.isInteger(i.quantity) || i.quantity <= 0 || i.quantity > 1000) {
@@ -161,20 +168,107 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Verifikasi alamat milik user
+    // Verifikasi alamat milik user, ambil koordinat dan provinsi
     const { data: addr, error: addrErr } = await supabase
       .from('addresses')
-      .select('id, user_id')
+      .select('id, user_id, latitude, longitude, province')
       .eq('id', address_id)
       .single()
     if (addrErr || !addr || addr.user_id !== user.id) {
       throw new Error('Alamat tidak valid')
     }
 
+    // Ambil konfigurasi shipping
+    const { data: config } = await supabase
+      .from('shipping_configs')
+      .select('*')
+      .maybeSingle()
+
+    // Cek status keaktifan metode pengiriman
+    if (shipping_method === 'local') {
+      if (config && !config.local_delivery_active) {
+        throw new Error('Layanan pengantaran lokal (Antar Toko) sedang tidak aktif.')
+      }
+    } else if (shipping_method === 'zone') {
+      if (config && !config.zone_shipping_active) {
+        throw new Error('Layanan pengiriman zona sedang tidak aktif.')
+      }
+    } else {
+      throw new Error('Metode pengiriman tidak valid.')
+    }
+
+    // Hitung jarak jika koordinat tersedia
+    const storeLat = config ? Number(config.store_lat) : -6.7027
+    const storeLng = config ? Number(config.store_lng) : 107.5645
+    let distance: number | null = null
+    if (addr.latitude !== null && addr.longitude !== null) {
+      distance = getDistance(storeLat, storeLng, Number(addr.latitude), Number(addr.longitude))
+    }
+
+    if (shipping_method === 'local') {
+      if (distance === null) {
+        throw new Error('Lokasi alamat pengiriman tidak ditentukan di peta. Harap tentukan lokasi untuk pengantaran lokal.')
+      }
+      if (distance > 10) {
+        throw new Error(`Jarak alamat pengiriman (${distance.toFixed(1)} km) melebihi batas maksimal pengantaran lokal (10 km).`)
+      }
+    }
+
+    // Cek COD keaktifan & batasan
+    if (payment_method === 'cod') {
+      if (config && !config.cod_active) {
+        throw new Error('Metode pembayaran COD sedang tidak aktif.')
+      }
+      if (shipping_method !== 'local') {
+        throw new Error('Metode COD hanya tersedia untuk pengantaran lokal (Antar Toko).')
+      }
+      if (distance === null || distance > 10) {
+        throw new Error('Metode COD hanya tersedia dalam radius maksimal 10 km.')
+      }
+    }
+
     // Hitung harga di server (jangan percaya client)
     const resolved = await resolvePricing(supabase, items)
     const subtotal = resolved.reduce((s, i) => s + i.unit_price * i.quantity, 0)
-    const shipping_cost = calculateShipping(subtotal)
+
+    // Cek minimal belanja COD
+    if (payment_method === 'cod') {
+      const minPurchase = config ? Number(config.cod_min_purchase) : 50000
+      if (subtotal < minPurchase) {
+        throw new Error(`Minimal pembelian untuk metode COD adalah Rp${minPurchase.toLocaleString('id-ID')}`)
+      }
+    }
+
+    // Hitung biaya pengiriman
+    let shipping_cost = 20000
+    if (subtotal >= 200000) {
+      shipping_cost = 0
+    } else {
+      if (shipping_method === 'local') {
+        if (distance !== null) {
+          if (distance <= 3) shipping_cost = 5000
+          else if (distance <= 5) shipping_cost = 10000
+          else if (distance <= 10) shipping_cost = 15000
+        } else {
+          shipping_cost = 20000
+        }
+      } else {
+        // zone-based shipping
+        if (addr.province) {
+          const cleanProvince = addr.province.trim().toLowerCase()
+          const { data: zones } = await supabase.from('shipping_zones').select('*')
+          if (zones && zones.length) {
+            const matched = zones.find((z: any) =>
+              z.provinces.some((p: string) => p.trim().toLowerCase() === cleanProvince)
+            )
+            if (matched) {
+              shipping_cost = Number(matched.cost)
+            }
+          }
+        }
+      }
+    }
+
     const total = subtotal + shipping_cost
     const status = payment_method === 'cod' ? 'processing' : 'pending_payment'
 
@@ -189,6 +283,7 @@ Deno.serve(async (req) => {
         total,
         status,
         notes: notes || null,
+        shipping_method,
       })
       .select()
       .single()
@@ -218,6 +313,17 @@ Deno.serve(async (req) => {
       status: payment_method === 'cod' ? 'confirmed' : 'pending',
     })
     if (paymentError) throw new Error(`Gagal membuat pembayaran: ${paymentError.message}`)
+
+    // Buat shipment record
+    const courierName = shipping_method === 'local' ? 'Kurir Toko' : 'Reguler'
+    const { error: shipmentError } = await supabase.from('shipments').insert({
+      order_id: order.id,
+      courier: courierName,
+      status: 'pending',
+    })
+    if (shipmentError) {
+      throw new Error(`Gagal membuat data pengiriman: ${shipmentError.message}`)
+    }
 
     // Notifikasi
     await supabase.from('notifications').insert({
