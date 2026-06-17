@@ -168,6 +168,7 @@ const AdminProfile = () => {
                 )}
               </div>
               <button
+                type="button"
                 onClick={() => fileRef.current?.click()}
                 disabled={uploadingAvatar}
                 className="absolute bottom-0 right-0 rounded-full bg-primary text-primary-foreground p-2.5 shadow-lg hover:scale-110 transition disabled:opacity-50 border-2 border-background"

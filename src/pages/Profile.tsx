@@ -418,6 +418,7 @@ const Profile = () => {
               )}
             </div>
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploadingAvatar}
               className="absolute bottom-0 right-0 rounded-full bg-primary text-primary-foreground p-2 shadow-lg hover:scale-110 transition disabled:opacity-50"
