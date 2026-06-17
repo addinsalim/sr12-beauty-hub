@@ -29,7 +29,11 @@ const Login = () => {
     const { error } = await signIn(email, password);
     setLoading(false);
     if (error) {
-      toast({ title: 'Login gagal', description: error.message, variant: 'destructive' });
+      let message = error.message;
+      if (error.message === 'Invalid login credentials' || error.message.toLowerCase().includes('invalid credentials')) {
+        message = 'Email atau password yang Anda masukkan salah. Silakan periksa kembali.';
+      }
+      toast({ title: 'Login gagal', description: message, variant: 'destructive' });
     } else {
       toast({ title: 'Login berhasil!' });
     }
