@@ -113,7 +113,7 @@ const Checkout = () => {
   useEffect(() => {
     if (!user) return;
     setLoadingAddresses(true);
-    supabase.from('addresses').select('*').eq('user_id', user.id).order('is_default', { ascending: false })
+    (supabase.from('addresses') as any).select('*').eq('user_id', user.id).eq('is_visible', true).order('is_default', { ascending: false })
       .then(({ data }) => {
         const list = (data || []) as Address[];
         setAddresses(list);

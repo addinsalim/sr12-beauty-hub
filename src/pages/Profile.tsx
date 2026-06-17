@@ -212,8 +212,8 @@ const Profile = () => {
 
   const loadAddresses = async () => {
     setLoadingAddr(true);
-    const { data } = await supabase
-      .from('addresses').select('*').eq('user_id', user!.id)
+    const { data } = await (supabase.from('addresses') as any)
+      .select('*').eq('user_id', user!.id).eq('is_visible', true)
       .order('is_default', { ascending: false }).order('created_at', { ascending: false });
     setAddresses((data as Address[]) || []);
     setLoadingAddr(false);
@@ -487,8 +487,8 @@ const Profile = () => {
 
   const handleDeleteAddr = async () => {
     if (!deletingAddr) return;
-    const { error } = await supabase.from('addresses').delete().eq('id', deletingAddr.id);
-    if (error) { toast.error('Gagal menghapus'); return; }
+    const { error } = await supabase.from('addresses').update({ is_visible: false, is_default: false } as any).eq('id', deletingAddr.id);
+    if (error) { toast.error('Gagal menghapus: ' + error.message); return; }
     toast.success('Alamat dihapus');
     setDeletingAddr(null);
     loadAddresses();
