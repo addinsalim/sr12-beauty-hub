@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { order_id } = await req.json()
+    const { order_id, redirect_url } = await req.json()
     if (!order_id) throw new Error('order_id diperlukan')
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
       },
       item_details: itemDetails,
       callbacks: {
-        finish: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:8080'}/orders/${order.id}`,
+        finish: redirect_url || `${Deno.env.get('FRONTEND_URL') || 'http://localhost:8080'}/orders/${order.id}`,
       },
     }
 

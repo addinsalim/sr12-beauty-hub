@@ -90,7 +90,10 @@ const OrderDetail = () => {
     setPayingSnap(true);
     try {
       const res = await supabase.functions.invoke('create-payment', {
-        body: { order_id: order.id },
+        body: { 
+          order_id: order.id,
+          redirect_url: `${window.location.origin}/orders/${order.id}`
+        },
       });
       if (res.error) throw new Error(res.error.message);
       const { snap_token } = res.data;

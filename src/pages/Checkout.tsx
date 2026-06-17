@@ -340,7 +340,10 @@ const Checkout = () => {
   const openSnapPayment = async (orderId: string) => {
     try {
       const res = await supabase.functions.invoke('create-payment', {
-        body: { order_id: orderId },
+        body: { 
+          order_id: orderId,
+          redirect_url: `${window.location.origin}/orders/${orderId}`
+        },
       });
 
       if (res.error) throw new Error(res.error.message);
