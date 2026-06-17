@@ -58,6 +58,8 @@ const Checkout = () => {
     full_address: '', city: '', province: '', postal_code: '', district: '',
     latitude: null, longitude: null,
   });
+  const [syncingAddr, setSyncingAddr] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [paymentMethod, setPaymentMethod] = useState<'midtrans' | 'cod'>('midtrans');
   const [notes, setNotes] = useState('');
@@ -139,6 +141,95 @@ const Checkout = () => {
     });
   }, []);
 
+  const isGibberish = (text: string) => {
+    if (!text) return true;
+    const cleaned = text.trim().toLowerCase();
+    if (cleaned.length < 3) return true;
+    if (/(.)\1{4,}/.test(cleaned)) return true;
+    const words = cleaned.split(/\s+/);
+    for (const word of words) {
+      if (word.length >= 4 && !/[aeiouy]/.test(word) && !/^[0-9\-]+$/.test(word)) {
+        return true;
+      }
+    }
+    const keyboardMash = ['asdf', 'qwer', 'zxcv', 'hjkl', 'uiop', 'bnm'];
+    for (const mash of keyboardMash) {
+      if (cleaned.includes(mash)) return true;
+    }
+    return false;
+  };
+
+  const syncAddressFromCoords = async (lat: number, lng: number, setFormCallback: any) => {
+    if (lat < -11 || lat > 6 || lng < 95 || lng > 141) {
+      toast({ title: 'Lokasi tidak valid', description: 'Titik koordinat harus berada di dalam wilayah Indonesia.', variant: 'destructive' });
+      return;
+    }
+    setSyncingAddr(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=id`);
+      if (!res.ok) throw new Error('Failed to fetch location data');
+      const data = await res.json();
+      if (data && data.address) {
+        const addr = data.address;
+        const province = addr.state || addr.region || '';
+        const city = addr.city || addr.regency || addr.municipality || addr.county || '';
+        const district = addr.suburb || addr.district || addr.village || addr.municipality || '';
+        const postalCode = addr.postcode || '';
+        
+        const road = addr.road || '';
+        const neighborhood = addr.neighbourhood || '';
+        const hamlet = addr.hamlet || '';
+        const fullAddr = [road, neighborhood, hamlet].filter(Boolean).join(', ') || data.display_name.split(',').slice(0, 3).join(', ');
+
+        setFormCallback((prev: any) => ({
+          ...prev,
+          province: province.replace('Daerah Khusus Ibukota ', 'DKI '),
+          city: city.replace('Kota Administrasi ', '').replace('Kabupaten ', 'Kab. '),
+          district: district || prev.district || '',
+          postal_code: postalCode || prev.postal_code || '',
+          full_address: fullAddr || data.display_name,
+          latitude: lat,
+          longitude: lng,
+        }));
+        toast({ title: '📍 Alamat disinkronkan', description: 'Detail alamat berhasil disalin dari koordinat peta.' });
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Sinkronisasi gagal', description: 'Gagal mendapatkan data alamat dari koordinat terpilih.', variant: 'destructive' });
+    } finally {
+      setSyncingAddr(false);
+    }
+  };
+
+  const handleSearchLocation = async (query: string, map: any, marker: any, setFormCallback: any) => {
+    if (!query.trim()) return;
+    setSyncingAddr(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=id`);
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lon);
+        
+        if (map && marker) {
+          map.setView([latitude, longitude], 15);
+          marker.setLatLng([latitude, longitude]);
+        }
+        
+        await syncAddressFromCoords(latitude, longitude, setFormCallback);
+      } else {
+        toast({ title: 'Lokasi tidak ditemukan', description: 'Coba masukkan kata kunci pencarian alamat yang lebih spesifik.', variant: 'destructive' });
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Pencarian gagal', description: 'Gagal mencari lokasi.', variant: 'destructive' });
+    } finally {
+      setSyncingAddr(false);
+    }
+  };
+
   // Leaflet Map Picker Initialization
   useEffect(() => {
     if (!showAddressForm) {
@@ -184,21 +275,13 @@ const Checkout = () => {
 
       marker.on('dragend', () => {
         const position = marker.getLatLng();
-        setNewAddress((prev: any) => ({
-          ...prev,
-          latitude: position.lat,
-          longitude: position.lng
-        }));
+        syncAddressFromCoords(position.lat, position.lng, setNewAddress);
       });
 
       map.on('click', (e: any) => {
         const coords = e.latlng;
         marker.setLatLng(coords);
-        setNewAddress((prev: any) => ({
-          ...prev,
-          latitude: coords.lat,
-          longitude: coords.lng
-        }));
+        syncAddressFromCoords(coords.lat, coords.lng, setNewAddress);
       });
 
       setNewAddress((prev: any) => ({
@@ -305,6 +388,44 @@ const Checkout = () => {
       toast({ title: 'Data tidak lengkap', description: 'Isi semua field wajib.', variant: 'destructive' });
       return;
     }
+
+    if (!newAddress.latitude || !newAddress.longitude) {
+      toast({ title: 'Lokasi belum ditentukan', description: 'Silakan pilih lokasi di peta terlebih dahulu.', variant: 'destructive' });
+      return;
+    }
+
+    const lat = Number(newAddress.latitude);
+    const lng = Number(newAddress.longitude);
+    if (lat < -11 || lat > 6 || lng < 95 || lng > 141) {
+      toast({ title: 'Lokasi tidak valid', description: 'Titik koordinat harus berada di dalam wilayah Indonesia.', variant: 'destructive' });
+      return;
+    }
+
+    if (isGibberish(newAddress.recipient_name)) {
+      toast({ title: 'Nama tidak valid', description: 'Nama penerima terdeteksi palsu atau tidak valid.', variant: 'destructive' });
+      return;
+    }
+
+    if (newAddress.full_address.trim().length < 10 || isGibberish(newAddress.full_address)) {
+      toast({ title: 'Alamat tidak valid', description: 'Alamat lengkap terdeteksi palsu, tidak valid, atau terlalu pendek (minimal 10 karakter).', variant: 'destructive' });
+      return;
+    }
+
+    if (isGibberish(newAddress.city)) {
+      toast({ title: 'Kota tidak valid', description: 'Nama kota terdeteksi palsu atau tidak valid.', variant: 'destructive' });
+      return;
+    }
+
+    if (isGibberish(newAddress.province)) {
+      toast({ title: 'Provinsi tidak valid', description: 'Nama provinsi terdeteksi palsu atau tidak valid.', variant: 'destructive' });
+      return;
+    }
+
+    if (newAddress.district && isGibberish(newAddress.district)) {
+      toast({ title: 'Kecamatan tidak valid', description: 'Nama kecamatan terdeteksi palsu atau tidak valid.', variant: 'destructive' });
+      return;
+    }
+
     const { data, error } = await supabase.from('addresses').insert({
       ...newAddress, user_id: user.id, is_default: addresses.length === 0,
     }).select().single();
@@ -589,14 +710,54 @@ const Checkout = () => {
                   <div><Label className="text-xs">Alamat Lengkap *</Label><Input value={newAddress.full_address} onChange={e => setNewAddress(p => ({ ...p, full_address: e.target.value }))} /></div>
                   
                   {/* Leaflet Map Picker */}
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       📍 Tentukan Lokasi di Peta
                     </Label>
                     <p className="text-[11px] text-muted-foreground leading-normal">
-                      Geser pin peta ke lokasi pengiriman yang tepat untuk menghitung jarak & mengaktifkan Antar Toko / COD.
+                      Cari alamat Anda atau geser pin peta ke lokasi pengiriman yang tepat untuk menghitung jarak & mengaktifkan Antar Toko / COD.
                     </p>
-                    <div id="leaflet-map-picker" className="h-[220px] w-full rounded-lg border border-border mt-1 shadow-inner" style={{ zIndex: 1 }} />
+
+                    {/* Search bar for map */}
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Cari lokasi (contoh: Wanayasa, Purwakarta)..." 
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSearchLocation(searchQuery, mapRef.current, markerRef.current, setNewAddress);
+                          }
+                        }}
+                        className="text-xs"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="secondary" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleSearchLocation(searchQuery, mapRef.current, markerRef.current, setNewAddress);
+                        }}
+                        disabled={syncingAddr}
+                      >
+                        {syncingAddr ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Cari'}
+                      </Button>
+                    </div>
+
+                    <div className="relative mt-1">
+                      <div id="leaflet-map-picker" className="h-[220px] w-full rounded-lg border border-border shadow-inner" style={{ zIndex: 1 }} />
+                      {syncingAddr && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg" style={{ zIndex: 999 }}>
+                          <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            <span className="text-xs text-muted-foreground font-medium">Sinkronisasi peta...</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {newAddress.latitude !== null && (
                       <p className="text-[11px] text-primary font-medium mt-1">
                         Koordinat: {Number(newAddress.latitude).toFixed(6)}, {Number(newAddress.longitude).toFixed(6)} 
