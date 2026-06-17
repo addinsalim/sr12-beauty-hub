@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 
 const profileSchema = z.object({
   full_name: z.string().trim().min(2, 'Nama minimal 2 karakter').max(100),
-  phone: z.string().trim().min(8, 'Nomor telepon tidak valid').max(20),
+  phone: z.string().trim().max(20).optional().or(z.literal('')),
 });
 
 const addressSchema = z.object({
@@ -229,7 +229,7 @@ const Profile = () => {
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setSavingProfile(true);
     const { error } = await supabase.from('profiles')
-      .update({ full_name: fullName.trim(), phone: phone.trim() })
+      .update({ full_name: fullName.trim(), phone: phone.trim() || null })
       .eq('user_id', user!.id);
     setSavingProfile(false);
     if (error) { toast.error('Gagal menyimpan: ' + error.message); return; }

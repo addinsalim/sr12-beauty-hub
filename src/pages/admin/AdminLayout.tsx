@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Users, ShoppingCart, CreditCard,
   Truck, BarChart3, LogOut, Ticket, MessageCircle, Store, Menu, X, BotMessageSquare,
+  User,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -17,6 +18,7 @@ const sidebarLinks = [
   { href: '/admin/chat', label: 'Pesan Customer', icon: MessageCircle },
   { href: '/admin/bot-settings', label: 'Pengaturan Bot', icon: BotMessageSquare },
   { href: '/admin/reports', label: 'Laporan', icon: BarChart3 },
+  { href: '/admin/profile', label: 'Profil Saya', icon: User },
 ];
 
 const AdminLayout = () => {
@@ -69,7 +71,23 @@ const AdminLayout = () => {
         </nav>
 
         <div className="border-t border-border p-3">
-          <p className="text-xs text-muted-foreground mb-2 truncate px-2">{profile?.full_name || user.email}</p>
+          <Link to="/admin/profile" className="flex items-center gap-2.5 rounded-lg p-2 hover:bg-secondary/80 transition mb-2 group">
+            <div className="h-8 w-8 rounded-full overflow-hidden bg-secondary border border-primary/20 flex items-center justify-center shrink-0">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs font-semibold text-primary">
+                  {(profile?.full_name || user.email || 'A').slice(0, 2).toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                {profile?.full_name || 'Administrator'}
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+            </div>
+          </Link>
           <Link to="/" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-primary/10 text-primary font-medium hover:bg-primary/20 transition mb-1">
             <Store className="h-4 w-4" /> Lihat Toko
           </Link>
@@ -133,7 +151,23 @@ const AdminLayout = () => {
 
               {/* Drawer footer */}
               <div className="border-t border-border p-3">
-                <p className="text-xs text-muted-foreground mb-2 truncate px-2">{profile?.full_name || user.email}</p>
+                <Link to="/admin/profile" className="flex items-center gap-2.5 rounded-lg p-2 hover:bg-secondary/80 transition mb-2 group">
+                  <div className="h-9 w-9 rounded-full overflow-hidden bg-secondary border border-primary/20 flex items-center justify-center shrink-0">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-semibold text-primary">
+                        {(profile?.full_name || user.email || 'A').slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                      {profile?.full_name || 'Administrator'}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                </Link>
                 <Link to="/" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm bg-primary/10 text-primary font-medium hover:bg-primary/20 transition mb-1">
                   <Store className="h-4 w-4" /> Lihat Toko
                 </Link>

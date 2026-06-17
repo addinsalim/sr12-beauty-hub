@@ -38,6 +38,7 @@ import StoreLocation from "./pages/StoreLocation";
 import AdminVouchers from "./pages/admin/AdminVouchers";
 import AdminChat from "./pages/admin/AdminChat";
 import AdminBotSettings from "./pages/admin/AdminBotSettings";
+import AdminProfile from "./pages/admin/AdminProfile";
 import ScrollToTop from "@/components/ScrollToTop";
 
 const queryClient = new QueryClient();
@@ -85,6 +86,7 @@ const App = () => (
                     <Route path="chat" element={<AdminChat />} />
                     <Route path="bot-settings" element={<AdminBotSettings />} />
                     <Route path="reports" element={<AdminReports />} />
+                    <Route path="profile" element={<AdminProfile />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
