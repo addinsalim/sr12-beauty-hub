@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, X, Users, Edit2, ShieldAlert, Award, Star, Loader2, ShieldCheck, Phone, Truck } from 'lucide-react';
+import { Search, X, Users, Edit2, ShieldAlert, Award, Star, Loader2, ShieldCheck, Phone, Truck, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ const AdminUsers = () => {
   // Dialog States
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [newRole, setNewRole] = useState<'admin' | 'customer' | 'courier'>('customer');
   const [pointsDelta, setPointsDelta] = useState<number>(0);
@@ -188,6 +189,28 @@ const AdminUsers = () => {
       loadUsers();
     } catch (err: any) {
       toast.error('Gagal memperbarui poin: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenDeleteDialog = (user: any) => {
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    setActionLoading(true);
+    try {
+      const { error } = await supabase.rpc('delete_user', { target_user_id: selectedUser.user_id });
+      if (error) throw error;
+
+      toast.success(`Akun ${selectedUser.full_name || 'pengguna'} berhasil dihapus`);
+      setDeleteDialogOpen(false);
+      loadUsers();
+    } catch (err: any) {
+      toast.error('Gagal menghapus pengguna: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -382,6 +405,16 @@ const AdminUsers = () => {
                           >
                             <Award className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenDeleteDialog(u)}
+                            disabled={u.role === 'owner' || isCurrentUser}
+                            title="Hapus Pengguna"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -433,6 +466,15 @@ const AdminUsers = () => {
                         className="h-7 px-2 text-[11px] text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10"
                       >
                         Poin
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDeleteDialog(u)}
+                        disabled={u.role === 'owner' || isCurrentUser}
+                        className="h-7 px-2 text-[11px] text-destructive border-destructive/30 hover:bg-destructive/10"
+                      >
+                        Hapus
                       </Button>
                     </div>
                   </div>
@@ -582,6 +624,44 @@ const AdminUsers = () => {
             <Button onClick={handleSavePoints} disabled={actionLoading}>
               {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Perbarui Poin
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Account Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-1.5">
+              <ShieldAlert className="h-5 w-5" /> Hapus Akun Pengguna
+            </DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-destructive/5 border border-destructive/10">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-gold/30 to-rose-gold/30 flex items-center justify-center font-bold text-sm text-foreground shrink-0">
+                  {selectedUser.avatar_url ? (
+                    <img src={selectedUser.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                  ) : (selectedUser.full_name || 'U').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">{selectedUser.full_name || '-'}</p>
+                  <p className="text-xs text-muted-foreground">Role: <span className="font-medium">{selectedUser.role}</span></p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex flex-col gap-2">
+                <p className="font-semibold">⚠️ TINDAKAN TIDAK DAPAT DIBATALKAN!</p>
+                <p>Menghapus akun ini akan menghapus data autentikasi pengguna secara permanen dari server. Seluruh profil, alamat pengiriman, voucher, poin loyalitas, serta riwayat interaksi pengguna ini juga akan ikut terhapus (cascade).</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>Batal</Button>
+            <Button variant="destructive" onClick={handleDeleteUser} disabled={actionLoading}>
+              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Hapus Akun Permanen
             </Button>
           </DialogFooter>
         </DialogContent>
