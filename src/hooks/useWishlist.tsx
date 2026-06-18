@@ -25,7 +25,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
     const { data } = await supabase.from('wishlists').select('product_id').eq('user_id', user.id);
     setProductIds(new Set((data || []).map((d: any) => d.product_id)));
     setLoading(false);
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => { refresh(); }, [refresh]);
 

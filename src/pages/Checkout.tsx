@@ -70,7 +70,10 @@ const Checkout = () => {
   // Shipping configurations
   const [shippingConfigs, setShippingConfigs] = useState<any>(null);
   const [shippingZones, setShippingZones] = useState<any[]>([]);
-  const [shippingMethod, setShippingMethod] = useState<'local' | 'zone'>('zone');
+  const [shippingMethod, setShippingMethod] = useState<'local' | 'zone' | 'biteship'>('zone');
+  const [biteshipRates, setBiteshipRates] = useState<any[]>([]);
+  const [loadingBiteshipRates, setLoadingBiteshipRates] = useState(false);
+  const [selectedBiteshipCourier, setSelectedBiteshipCourier] = useState<any>(null);
 
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -140,6 +143,56 @@ const Checkout = () => {
       if (data) setShippingZones(data);
     });
   }, []);
+
+  // Fetch Biteship Rates when address changes
+  useEffect(() => {
+    const currentAddress = addresses.find(a => a.id === selectedAddressId);
+    if (!selectedAddressId || !currentAddress || !currentAddress.latitude || !currentAddress.longitude) {
+      setBiteshipRates([]);
+      setSelectedBiteshipCourier(null);
+      return;
+    }
+
+    const fetchBiteshipRates = async () => {
+      setLoadingBiteshipRates(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('biteship', {
+          body: {
+            action: 'get-rates',
+            address_id: selectedAddressId,
+            items: checkoutItems.map(i => ({
+              productId: i.productId,
+              name: i.name,
+              price: i.price,
+              quantity: i.quantity
+            }))
+          }
+        });
+
+        if (error) throw error;
+        if (data && data.success) {
+          const rates = data.pricings || [];
+          setBiteshipRates(rates);
+          if (rates.length > 0) {
+            setSelectedBiteshipCourier(rates[0]);
+          } else {
+            setSelectedBiteshipCourier(null);
+          }
+        }
+      } catch (err: any) {
+        console.error('Error fetching Biteship rates:', err);
+        toast({
+          title: 'Gagal memuat ongkir Biteship',
+          description: err.message || 'Gagal mengambil ongkir dari Biteship.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoadingBiteshipRates(false);
+      }
+    };
+
+    fetchBiteshipRates();
+  }, [selectedAddressId, addresses, checkoutItems]);
 
   const isGibberish = (text: string) => {
     if (!text) return true;
@@ -346,9 +399,9 @@ const Checkout = () => {
     }
   }, [isCodAvailable, paymentMethod, toast]);
 
-  const handleShippingMethodChange = (method: 'local' | 'zone') => {
+  const handleShippingMethodChange = (method: 'local' | 'zone' | 'biteship') => {
     setShippingMethod(method);
-    if (method === 'zone' && paymentMethod === 'cod') {
+    if (method !== 'local' && paymentMethod === 'cod') {
       setPaymentMethod('midtrans');
     }
   };
@@ -362,10 +415,12 @@ const Checkout = () => {
       if (distance <= 5) return 10000;
       if (distance <= 10) return 15000;
       return 20000;
+    } else if (shippingMethod === 'biteship') {
+      return selectedBiteshipCourier ? Number(selectedBiteshipCourier.cost) : 20000;
     } else {
       return matchedZone ? Number(matchedZone.cost) : 20000;
     }
-  }, [shippingMethod, distance, matchedZone, subtotal]);
+  }, [shippingMethod, distance, matchedZone, subtotal, selectedBiteshipCourier]);
 
   const shippingFee = calculatedShippingFee;
 
@@ -527,19 +582,29 @@ const Checkout = () => {
 
     setSubmitting(true);
     try {
+      const orderPayload: any = {
+        items: checkoutItems.map(i => ({
+          product_id: i.productId,
+          variant_id: i.variantId || null,
+          quantity: i.quantity,
+        })),
+        address_id: selectedAddressId,
+        payment_method: paymentMethod,
+        shipping_method: shippingMethod,
+        notes: notes || undefined,
+      };
+
+      if (shippingMethod === 'biteship') {
+        if (!selectedBiteshipCourier) {
+          throw new Error('Harap pilih opsi kurir pengiriman terlebih dahulu.');
+        }
+        orderPayload.shipping_cost = subtotal >= 200000 ? 0 : selectedBiteshipCourier.cost;
+        orderPayload.courier = `${selectedBiteshipCourier.courier_code}:${selectedBiteshipCourier.service_code}`;
+      }
+
       // Langkah 1: Buat order (harga & ongkir dihitung server-side)
       const res = await supabase.functions.invoke('create-order', {
-        body: {
-          items: checkoutItems.map(i => ({
-            product_id: i.productId,
-            variant_id: i.variantId || null,
-            quantity: i.quantity,
-          })),
-          address_id: selectedAddressId,
-          payment_method: paymentMethod,
-          shipping_method: shippingMethod,
-          notes: notes || undefined,
-        },
+        body: orderPayload,
       });
 
       // Ekstrak pesan error asli dari response body
@@ -844,6 +909,85 @@ const Checkout = () => {
                       )}
                     </div>
                   </label>
+                )}
+
+                {/* Biteship Shipping Option */}
+                {(!shippingConfigs || shippingConfigs.zone_shipping_active) && (
+                  <div className="space-y-2">
+                    <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${shippingMethod === 'biteship' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'} ${paymentMethod === 'cod' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <input 
+                        type="radio" 
+                        name="shipping_method" 
+                        className="mt-1 accent-primary" 
+                        checked={shippingMethod === 'biteship'} 
+                        disabled={paymentMethod === 'cod'} 
+                        onChange={() => handleShippingMethodChange('biteship')} 
+                      />
+                      <div className="text-sm flex-1">
+                        <div className="flex justify-between items-start flex-wrap">
+                          <p className="font-medium text-card-foreground">Pengiriman Ekspedisi (Biteship)</p>
+                          {shippingMethod === 'biteship' && selectedBiteshipCourier && (
+                            <span className="text-sm font-bold text-primary">
+                              {subtotal >= 200000 ? 'GRATIS' : formatPrice(Number(selectedBiteshipCourier.cost))}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Pilih kurir ekspedisi real-time (JNE, J&T, Sicepat, dll.) berdasarkan koordinat alamat Anda.</p>
+                      </div>
+                    </label>
+
+                    {shippingMethod === 'biteship' && (
+                      <div className="pl-7 space-y-2">
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pilih Opsi Kurir:</p>
+                        {loadingBiteshipRates ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                            <span>Mencari tarif kurir terbaik...</span>
+                          </div>
+                        ) : biteshipRates.length === 0 ? (
+                          <p className="text-xs text-muted-foreground bg-secondary/50 p-2.5 rounded-lg border border-border">
+                            {selectedAddress?.latitude && selectedAddress?.longitude 
+                              ? 'Tidak ada kurir ekspedisi yang tersedia untuk lokasi ini.' 
+                              : 'Harap tentukan/pin lokasi koordinat alamat Anda di peta terlebih dahulu untuk menampilkan tarif Biteship.'}
+                          </p>
+                        ) : (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {biteshipRates.map((rate) => {
+                              const isSelected = selectedBiteshipCourier?.id === rate.id;
+                              return (
+                                <button
+                                  key={rate.id}
+                                  type="button"
+                                  onClick={() => setSelectedBiteshipCourier(rate)}
+                                  className={`flex flex-col items-start text-left p-3.5 rounded-xl border transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/30' : 'border-border bg-card hover:bg-secondary/20'}`}
+                                >
+                                  <div className="w-full flex justify-between items-center">
+                                    <span className="text-xs font-bold text-foreground">
+                                      {rate.courier_name}
+                                    </span>
+                                    <span className="text-[10px] uppercase font-semibold tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                      {rate.service_name}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">
+                                    {rate.description || 'Pengiriman reguler'}
+                                  </p>
+                                  <div className="w-full flex justify-between items-end mt-2 pt-2 border-t border-border/40">
+                                    <span className="text-[10px] text-muted-foreground">
+                                      ⏱️ {rate.duration}
+                                    </span>
+                                    <span className="text-xs font-bold text-primary">
+                                      {subtotal >= 200000 ? 'GRATIS' : formatPrice(rate.cost)}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
               

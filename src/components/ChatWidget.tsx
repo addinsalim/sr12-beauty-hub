@@ -222,6 +222,7 @@ const ChatWidget = () => {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldHideCompletely, user?.id, open]);
 
   useEffect(() => {

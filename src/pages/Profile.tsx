@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import {
@@ -103,7 +103,7 @@ const Profile = () => {
     if (/(.)\1{4,}/.test(cleaned)) return true;
     const words = cleaned.split(/\s+/);
     for (const word of words) {
-      if (word.length >= 4 && !/[aeiouy]/.test(word) && !/^[0-9\-]+$/.test(word)) {
+      if (word.length >= 4 && !/[aeiouy]/.test(word) && !/^[0-9-]+$/.test(word)) {
         return true;
       }
     }
@@ -203,36 +203,38 @@ const Profile = () => {
   }, [profile]);
 
   // Load data
-  useEffect(() => {
+  const loadAddresses = useCallback(async () => {
     if (!user) return;
-    loadAddresses();
-    loadNotifications();
-    loadOrderCount();
-  }, [user]);
-
-  const loadAddresses = async () => {
     setLoadingAddr(true);
     const { data } = await (supabase.from('addresses') as any)
-      .select('*').eq('user_id', user!.id).eq('is_visible', true)
+      .select('*').eq('user_id', user.id).eq('is_visible', true)
       .order('is_default', { ascending: false }).order('created_at', { ascending: false });
     setAddresses((data as Address[]) || []);
     setLoadingAddr(false);
-  };
+  }, [user]);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
     setLoadingNotif(true);
     const { data } = await supabase
-      .from('notifications').select('*').eq('user_id', user!.id)
+      .from('notifications').select('*').eq('user_id', user.id)
       .order('created_at', { ascending: false }).limit(20);
     setNotifications((data as Notification[]) || []);
     setLoadingNotif(false);
-  };
+  }, [user]);
 
-  const loadOrderCount = async () => {
+  const loadOrderCount = useCallback(async () => {
+    if (!user) return;
     const { count } = await supabase
-      .from('orders').select('*', { count: 'exact', head: true }).eq('user_id', user!.id);
+      .from('orders').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
     setOrderCount(count || 0);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    loadAddresses();
+    loadNotifications();
+    loadOrderCount();
+  }, [loadAddresses, loadNotifications, loadOrderCount]);
 
   // Leaflet Map Picker Initialization for Profile Page
   useEffect(() => {
@@ -305,6 +307,7 @@ const Profile = () => {
         markerRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addrDialog]);
 
   // ---- Profile save ----

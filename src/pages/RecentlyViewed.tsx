@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { History, ArrowLeft, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +15,7 @@ const RecentlyViewed = () => {
 
   useEffect(() => { if (!authLoading && !user) navigate('/login'); }, [user, authLoading, navigate]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     const { data: rv } = await supabase
@@ -31,9 +31,9 @@ const RecentlyViewed = () => {
     const ordered = rv.map(r => map.get(r.product_id)).filter(Boolean);
     setItems(ordered);
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { load(); }, [user]);
+  useEffect(() => { load(); }, [load]);
 
   const clearAll = async () => {
     await supabase.from('recently_viewed').delete().eq('user_id', user!.id);

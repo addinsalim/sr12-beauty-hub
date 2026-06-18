@@ -49,6 +49,7 @@ const AdminShipments = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [editShipmentState, setEditShipmentState] = useState<Record<string, { courier: string; tracking_number: string; courier_name: string; status: string }>>({});
+  const [bookingLoading, setBookingLoading] = useState<Record<string, boolean>>({});
 
   // Fetch configs, zones, shipments
   const fetchData = useCallback(async () => {
@@ -337,6 +338,29 @@ const AdminShipments = () => {
       fetchData();
     } catch (err: any) {
       toast.error('Gagal memperbarui pengiriman: ' + err.message);
+    }
+  };
+
+  const handleBookBiteship = async (shipmentId: string) => {
+    setBookingLoading(prev => ({ ...prev, [shipmentId]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('biteship', {
+        body: {
+          action: 'create-shipment',
+          shipment_id: shipmentId
+        }
+      });
+
+      if (error) throw error;
+      if (data && data.success) {
+        toast.success(`Berhasil memesan kurir Biteship! Resi: ${data.tracking_number}`);
+        fetchData();
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Gagal memesan kurir Biteship: ${err.message || 'Terjadi kesalahan.'}`);
+    } finally {
+      setBookingLoading(prev => ({ ...prev, [shipmentId]: false }));
     }
   };
 
@@ -808,8 +832,24 @@ const AdminShipments = () => {
                           </div>
                         </div>
 
-                        {/* Save Button */}
-                        <div className="flex justify-end pt-1">
+                        {/* Save & Biteship Action Buttons */}
+                        <div className="flex justify-end items-center gap-2 pt-1">
+                          {s.orders?.shipping_method === 'biteship' && s.status === 'pending' && s.orders?.status === 'processing' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={bookingLoading[s.id]}
+                              className="gap-1.5 text-xs h-8 border-primary text-primary hover:bg-primary/5"
+                              onClick={() => handleBookBiteship(s.id)}
+                            >
+                              {bookingLoading[s.id] ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Truck className="h-3.5 w-3.5" />
+                              )}
+                              Pesan Kurir Biteship
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             disabled={!isChanged}

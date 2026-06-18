@@ -18,7 +18,9 @@ interface CreateOrderRequest {
   payment_method: string
   payment_detail?: string
   notes?: string
-  shipping_method: 'local' | 'zone'
+  shipping_method: 'local' | 'zone' | 'biteship'
+  shipping_cost?: number
+  courier?: string
 }
 
 type Resolved = {
@@ -151,7 +153,7 @@ Deno.serve(async (req) => {
     if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
     const body: CreateOrderRequest = await req.json()
-    const { items, address_id, payment_method, payment_detail, notes, shipping_method } = body
+    const { items, address_id, payment_method, payment_detail, notes, shipping_method, shipping_cost, courier } = body
 
     // Validasi input
     if (!items?.length) throw new Error('Keranjang kosong')
@@ -192,6 +194,10 @@ Deno.serve(async (req) => {
     } else if (shipping_method === 'zone') {
       if (config && !config.zone_shipping_active) {
         throw new Error('Layanan pengiriman zona sedang tidak aktif.')
+      }
+    } else if (shipping_method === 'biteship') {
+      if (shipping_cost === undefined || !courier) {
+        throw new Error('Informasi biaya pengiriman Biteship tidak lengkap.')
       }
     } else {
       throw new Error('Metode pengiriman tidak valid.')
@@ -240,18 +246,20 @@ Deno.serve(async (req) => {
     }
 
     // Hitung biaya pengiriman
-    let shipping_cost = 20000
+    let final_shipping_cost = 20000
     if (subtotal >= 200000) {
-      shipping_cost = 0
+      final_shipping_cost = 0
     } else {
       if (shipping_method === 'local') {
         if (distance !== null) {
-          if (distance <= 3) shipping_cost = 5000
-          else if (distance <= 5) shipping_cost = 10000
-          else if (distance <= 10) shipping_cost = 15000
+          if (distance <= 3) final_shipping_cost = 5000
+          else if (distance <= 5) final_shipping_cost = 10000
+          else if (distance <= 10) final_shipping_cost = 15000
         } else {
-          shipping_cost = 20000
+          final_shipping_cost = 20000
         }
+      } else if (shipping_method === 'biteship') {
+        final_shipping_cost = Number(shipping_cost)
       } else {
         // zone-based shipping
         if (addr.province) {
@@ -262,14 +270,14 @@ Deno.serve(async (req) => {
               z.provinces.some((p: string) => p.trim().toLowerCase() === cleanProvince)
             )
             if (matched) {
-              shipping_cost = Number(matched.cost)
+              final_shipping_cost = Number(matched.cost)
             }
           }
         }
       }
     }
 
-    const total = subtotal + shipping_cost
+    const total = subtotal + final_shipping_cost
     const status = payment_method === 'cod' ? 'processing' : 'pending_payment'
 
     // Buat order
@@ -279,7 +287,7 @@ Deno.serve(async (req) => {
         user_id: user.id,
         address_id,
         subtotal,
-        shipping_cost,
+        shipping_cost: final_shipping_cost,
         total,
         status,
         notes: notes || null,
@@ -315,7 +323,12 @@ Deno.serve(async (req) => {
     if (paymentError) throw new Error(`Gagal membuat pembayaran: ${paymentError.message}`)
 
     // Buat shipment record
-    const courierName = shipping_method === 'local' ? 'Kurir Toko' : 'Reguler'
+    let courierName = 'Reguler'
+    if (shipping_method === 'local') {
+      courierName = 'Kurir Toko'
+    } else if (shipping_method === 'biteship') {
+      courierName = courier
+    }
     const { error: shipmentError } = await supabase.from('shipments').insert({
       order_id: order.id,
       courier: courierName,

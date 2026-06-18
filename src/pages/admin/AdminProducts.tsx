@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, ImagePlus, X, Package, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPrice, fetchAllProducts, createProduct, updateProduct, deleteProduct, uploadProductImage, addProductImage, deleteProductImage, createVariant, deleteVariant, fetchCategories } from '@/lib/supabaseHelpers';
@@ -27,7 +27,7 @@ const AdminProducts = () => {
 
   const [newVariant, setNewVariant] = useState({ name: '', type: 'Ukuran', price: 0, stock: 0 });
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [prods, cats] = await Promise.all([fetchAllProducts(), fetchCategories()]);
@@ -67,9 +67,9 @@ const AdminProducts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const resetForm = () => {
     setForm({ name: '', slug: '', category_id: '', price: 0, discount: 0, stock: 0, description: '', bpom: false, halal: false, weight: 0, expired_date: '', is_active: true });
