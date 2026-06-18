@@ -148,7 +148,7 @@ const Checkout = () => {
     if (/(.)\1{4,}/.test(cleaned)) return true;
     const words = cleaned.split(/\s+/);
     for (const word of words) {
-      if (word.length >= 4 && !/[aeiouy]/.test(word) && !/^[0-9\-]+$/.test(word)) {
+      if (word.length >= 4 && !/[aeiouy]/.test(word) && !/^[0-9-]+$/.test(word)) {
         return true;
       }
     }
@@ -299,6 +299,7 @@ const Checkout = () => {
         markerRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddressForm]);
 
   const selectedAddress = addresses.find(a => a.id === selectedAddressId);
@@ -679,7 +680,7 @@ const Checkout = () => {
                               {addrDistance !== null ? (
                                 <span className="text-xs font-semibold text-primary">📍 {addrDistance.toFixed(1)} km dari toko</span>
                               ) : (
-                                <span className="text-[10px] text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20 px-2 py-0.5 rounded border border-yellow-200">📍 Belum pin lokasi peta</span>
+                                <span className="text-[10px] text-rose-gold bg-rose-gold/5 dark:bg-rose-gold/10 px-2.5 py-0.5 rounded-full border border-rose-gold/20 font-medium">📍 Belum pin lokasi peta</span>
                               )}
                             </div>
                             <p className="text-muted-foreground">{addr.phone}</p>
@@ -808,7 +809,10 @@ const Checkout = () => {
                         </p>
                       )}
                       {distance === null && (
-                        <p className="text-xs text-yellow-600 font-medium mt-1">⚠️ Tentukan lokasi di peta pada alamat terpilih untuk mengaktifkan tarif lokal.</p>
+                        <div className="mt-2.5 flex items-start gap-2 rounded-lg bg-secondary/50 border border-border/50 p-2.5 text-xs text-muted-foreground">
+                          <MapPin className="h-4 w-4 text-rose-gold shrink-0 mt-0.5" />
+                          <span>Tentukan lokasi di peta pada alamat terpilih untuk mengaktifkan tarif lokal.</span>
+                        </div>
                       )}
                     </div>
                   </label>

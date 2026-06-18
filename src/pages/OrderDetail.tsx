@@ -17,7 +17,7 @@ const categoryImages: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending_payment: { label: 'Menunggu Pembayaran', color: 'bg-yellow-100 text-yellow-800' },
+  pending_payment: { label: 'Menunggu Pembayaran', color: 'bg-champagne text-amber-800 border border-amber-500/20 dark:bg-amber-950/20 dark:text-amber-400' },
   processing: { label: 'Diproses', color: 'bg-blue-100 text-blue-800' },
   shipped: { label: 'Dikirim', color: 'bg-purple-100 text-purple-800' },
   completed: { label: 'Selesai', color: 'bg-green-100 text-green-800' },
@@ -282,12 +282,12 @@ const OrderDetail = () => {
             <div className="rounded-xl border border-border bg-card p-5 print:border-0 print:p-0">
               <h2 className="flex items-center gap-2 text-base font-bold text-card-foreground mb-2"><CreditCard className="h-4 w-4 text-primary" /> Pembayaran</h2>
               <p className="text-sm text-muted-foreground">Metode: <span className="text-foreground font-medium">{payment.method === 'midtrans' ? 'Midtrans (Online)' : payment.method}{payment.bank_name ? ` - ${payment.bank_name}` : ''}</span></p>
-              <p className="text-sm text-muted-foreground">Status: <span className={`font-medium ${payment.status === 'confirmed' ? 'text-green-600' : payment.status === 'failed' ? 'text-red-500' : 'text-yellow-600'}`}>{payment.status === 'confirmed' ? '✅ Dikonfirmasi' : payment.status === 'failed' ? '❌ Gagal' : '⏳ Menunggu'}</span></p>
+              <p className="text-sm text-muted-foreground">Status: <span className={`font-medium ${payment.status === 'confirmed' ? 'text-green-600' : payment.status === 'failed' ? 'text-red-500' : 'text-amber-600'}`}>{payment.status === 'confirmed' ? '✅ Dikonfirmasi' : payment.status === 'failed' ? '❌ Gagal' : '⏳ Menunggu'}</span></p>
 
               {order.status === 'pending_payment' && payment.method === 'midtrans' && (
                 <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 p-2.5 text-xs text-yellow-700 dark:text-yellow-400">
-                    <Clock className="h-4 w-4 shrink-0" /> Batas waktu pembayaran 24 jam sejak pesanan dibuat.
+                  <div className="flex items-center gap-2 rounded-lg bg-secondary/60 dark:bg-secondary/20 p-2.5 text-xs text-muted-foreground border border-border/40">
+                    <Clock className="h-4 w-4 shrink-0 text-rose-gold" /> Batas waktu pembayaran 24 jam sejak pesanan dibuat.
                   </div>
                   <Button className="w-full rounded-full" onClick={handleContinuePayment} disabled={payingSnap}>
                     {payingSnap ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Membuka pembayaran...</> : '🔒 Lanjutkan Pembayaran'}
@@ -299,8 +299,8 @@ const OrderDetail = () => {
               )}
 
               {order.status === 'pending_payment' && payment.method === 'cod' && (
-                <div className="mt-2 flex items-center gap-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 p-2 text-xs text-yellow-700 dark:text-yellow-400">
-                  <Clock className="h-4 w-4" /> Bayar tunai saat paket tiba di alamat Anda.
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-secondary/60 dark:bg-secondary/20 p-2 text-xs text-muted-foreground border border-border/40">
+                  <Clock className="h-4 w-4 text-rose-gold" /> Bayar tunai saat paket tiba di alamat Anda.
                 </div>
               )}
             </div>
@@ -337,7 +337,7 @@ const OrderDetail = () => {
                       ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400'
                       : shipment.status === 'shipped'
                       ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400'
-                      : 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/20 dark:text-yellow-400'
+                      : 'bg-secondary/50 text-muted-foreground border-border dark:bg-secondary/20 dark:text-muted-foreground'
                   }`}>
                     {shipment.status === 'delivered' ? '✅ Diterima' : shipment.status === 'shipped' ? '🚚 Sedang Dikirim' : '⏳ Diproses / Pending'}
                   </span>

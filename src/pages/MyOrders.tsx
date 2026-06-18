@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Package, ChevronRight, Loader2, ShoppingBag, XCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +7,7 @@ import { formatPrice } from '@/lib/supabaseHelpers';
 import { Button } from '@/components/ui/button';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending_payment: { label: 'Menunggu Pembayaran', color: 'bg-yellow-100 text-yellow-800' },
+  pending_payment: { label: 'Menunggu Pembayaran', color: 'bg-champagne text-amber-800 border border-amber-500/20 dark:bg-amber-950/20 dark:text-amber-400' },
   processing: { label: 'Diproses', color: 'bg-blue-100 text-blue-800' },
   shipped: { label: 'Dikirim', color: 'bg-purple-100 text-purple-800' },
   completed: { label: 'Selesai', color: 'bg-green-100 text-green-800' },
@@ -42,7 +42,7 @@ const MyOrders = () => {
     if (!authLoading && !user) navigate('/login');
   }, [user, authLoading, navigate]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     const { data } = await supabase
@@ -52,9 +52,9 @@ const MyOrders = () => {
       .order('created_at', { ascending: false });
     setOrders(data || []);
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { fetchOrders(); }, [user]);
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const filtered = tab === 'all' ? orders : orders.filter(o => o.status === tab);
 
